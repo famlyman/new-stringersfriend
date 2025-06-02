@@ -1,40 +1,113 @@
-// app/(tabs)/index.tsx
-import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { useAuth } from '../../src/contexts/AuthContext'; // Adjust path
-import { Link } from 'expo-router'; // For navigation to other screens
+// app/(stringer)/onboarding.tsx
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, Button, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { useAuth } from '../../src/contexts/AuthContext';
+import { supabase } from '../../src/lib/supabase';
+import { router } from 'expo-router'; // Import router for navigation
 
-export default function DashboardScreen() {
-  const { user, session, signOut } = useAuth(); // Get user and signOut from context
+export default function StringerOnboarding() {
+  const { user, session } = useAuth();
+  const [shopName, setShopName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [address, setAddress] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false); // New state to check if onboarding is already done
+
+  useEffect(() => {
+    // Check if stringer profile already exists
+    async function checkIfOnboardingCompleted() {
+      if (user?.id) {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('stringers')
+          .select('id, shop_name')
+          .eq('id', user.id)
+          .single();
+
+        if (error && error.code !== 'PGRST116') { // PGRST116 means "No rows found"
+          console.error("Error checking stringer profile:", error.message);
+          Alert.alert("Error", "Could not check your profile status.");
+        } else if (data) {
+          // Profile found, onboarding already completed
+          setHasCompletedOnboarding(true);
+          console.log("Stringer profile found, redirecting to dashboard.");
+          router.replace('/(tabs)'); // Redirect to main stringer dashboard
+          return;
+        }
+        setLoading(false);
+      }
+    }
+    checkIfOnboardingCompleted();
+  }, [user]);
+
+  const handleSaveProfile = async () => {
+    if (!user?.id) {
+      Alert.alert('Error', 'User not authenticated.');
+      return;
+    }
+    if (!shopName.trim()) {
+      Alert.alert('Validation', 'Shop Name is required.');
+      return;
+    }
+
+    setLoading(true);
+    const { error } = await supabase
+      .from('stringers')
+      .upsert({
+        id: user.id,
+        shop_name: shopName.trim(),
+        phone_number: phoneNumber.trim() || null, // Store as null if empty
+        address: address.trim() || null,
+      });
+
+    if (error) {
+      console.error('Error saving stringer profile:', error.message);
+      Alert.alert('Error', 'Failed to save profile. Please try again.');
+    } else {
+      Alert.alert('Success', 'Your shop profile has been saved!');
+      // After successful onboarding, redirect to the main stringer dashboard
+      router.replace('/(tabs)');
+    }
+    setLoading(false);
+  };
+
+  if (loading || hasCompletedOnboarding) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" />
+        {!hasCompletedOnboarding && <Text>Loading profile...</Text>}
+        {hasCompletedOnboarding && <Text>Redirecting...</Text>}
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome to Your Stringer Dashboard!</Text>
-      {user && (
-        <Text style={styles.subTitle}>
-          Logged in as: {user.email} (User ID: {user.id.substring(0, 8)}...)
-        </Text>
-      )}
-
-
-      <View style={styles.buttonContainer}>
-        <Link href="/jobs/new" asChild>
-          <Pressable style={styles.button}>
-            <Text style={styles.buttonText}>Add New Job</Text>
-          </Pressable>
-        </Link>
-
-        <Link href="/jobs" asChild>
-          <Pressable style={styles.button}>
-            <Text style={styles.buttonText}>View All Jobs</Text>
-          </Pressable>
-        </Link>
-        
-      </View>
-
-      <Pressable onPress={signOut} style={styles.signOutButton}>
-        <Text style={styles.signOutButtonText}>Sign Out</Text>
-      </Pressable>
+      <Text style={styles.title}>Set up Your Shop</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Shop Name"
+        value={shopName}
+        onChangeText={setShopName}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Phone Number (Optional)"
+        value={phoneNumber}
+        onChangeText={setPhoneNumber}
+        keyboardType="phone-pad"
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Shop Address (Optional)"
+        value={address}
+        onChangeText={setAddress}
+      />
+      <Button
+        title={loading ? "Saving..." : "Save Profile"}
+        onPress={handleSaveProfile}
+        disabled={loading}
+      />
     </View>
   );
 }
@@ -43,50 +116,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
     padding: 20,
-    backgroundColor: '#eef2f6', // Light background
+    backgroundColor: '#f5f5f5',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#2c3e50',
-    textAlign: 'center',
-  },
-  subTitle: {
-    fontSize: 16,
-    color: '#555',
     marginBottom: 20,
     textAlign: 'center',
   },
-  buttonContainer: {
-    marginTop: 30,
-    width: '80%',
-  },
-  button: {
-    backgroundColor: '#3498db', // Blue
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+  input: {
+    height: 50,
+    borderColor: '#ccc',
+    borderWidth: 1,
     borderRadius: 8,
+    paddingHorizontal: 10,
     marginBottom: 15,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  signOutButton: {
-    marginTop: 40,
-    backgroundColor: '#e74c3c', // Red
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-  },
-  signOutButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    backgroundColor: '#fff',
   },
 });

@@ -1,39 +1,52 @@
 // app/(auth)/register.tsx
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, ActivityIndicator, Alert, Pressable } from 'react-native';
-import { supabase } from '../../src/lib/supabase'; // CORRECT PATH for this file's location
-import { useRouter, Link } from 'expo-router';
+import { View, Text, TextInput, Button, ActivityIndicator, Alert, StyleSheet, TouchableOpacity } from 'react-native';
+import { supabase } from '../../src/lib/supabase';
+import { useRouter } from 'expo-router';
+import { useAuth } from '../../src/contexts/AuthContext';
 
 export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { session } = useAuth();
 
   async function signUpWithEmail() {
     setLoading(true);
-    console.log('Attempting Sign Up with:', { email, password });
-    const { error } = await supabase.auth.signUp({
-      email: email,
-      password: password,
-    });
+    try {
+      // First, sign up the user
+      const { error: signUpError } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+      });
 
-    if (error) {
-      console.error('Sign Up Error:', error.message);
-      Alert.alert('Sign Up Failed', error.message);
-    } else {
-      console.log('Sign Up initiated. Check email for verification link!');
-      Alert.alert('Sign Up Successful!', 'Please check your email for a verification link to confirm your account. You will then be redirected to select your role.');
-      // After successful sign-up, navigate to the role selection screen
-      // This assumes role-select is the NEXT logical step after email verification (or initiation)
-      router.replace('/(auth)/role-select'); // Direct to the role-select screen
+      if (signUpError) {
+        throw signUpError;
+      }
+
+      // Delete any existing profile to ensure clean state
+      if (session?.user?.id) {
+        await supabase
+          .from('profiles')
+          .delete()
+          .eq('id', session.user.id);
+      }
+
+      Alert.alert("Account Created!", "Please check your email to confirm your account (if email confirmation is enabled).");
+      console.log("Registration successful! Redirecting to role selection.");
+      router.push('/(auth)/role-select');
+    } catch (error: any) {
+      Alert.alert("Error", error.message);
+      console.error("Registration error:", error.message);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Create Your Account</Text>
+      <Text style={styles.title}>Create Account</Text>
       <TextInput
         style={styles.input}
         placeholder="Email"
@@ -49,49 +62,26 @@ export default function RegisterScreen() {
         onChangeText={setPassword}
         secureTextEntry
       />
-      <Button
-        title={loading ? 'Loading...' : 'Register'}
-        onPress={signUpWithEmail}
-        disabled={loading}
-      />
-      <View style={styles.separator} />
-      <Link href="/(auth)/login" asChild>
-        <Pressable disabled={loading}>
-          <Text style={styles.linkText}>Already have an account? Sign In</Text>
-        </Pressable>
-      </Link>
+      <TouchableOpacity style={styles.button} onPress={signUpWithEmail} disabled={loading}>
+        <Text style={styles.buttonText}>{loading ? <ActivityIndicator color="#fff" /> : "Sign Up"}</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.linkButton}
+        onPress={() => router.push('/(auth)/login')}
+      >
+        <Text style={styles.linkText}>Already have an account? Sign In</Text>
+      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 20,
-    backgroundColor: '#f5f5f5',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 30,
-    textAlign: 'center',
-  },
-  input: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  separator: {
-    height: 20,
-  },
-  linkText: {
-    color: '#3498db',
-    textAlign: 'center',
-    marginTop: 10,
-    fontSize: 16,
-  },
+  container: { flex: 1, justifyContent: 'center', padding: 20, backgroundColor: '#f5f5f5', },
+  title: { fontSize: 28, fontWeight: 'bold', marginBottom: 30, textAlign: 'center', color: '#333', },
+  input: { backgroundColor: '#fff', padding: 15, borderRadius: 8, marginBottom: 15, fontSize: 16, borderWidth: 1, borderColor: '#ddd', },
+  button: { backgroundColor: '#007AFF', padding: 15, borderRadius: 8, alignItems: 'center', marginBottom: 15, },
+  buttonText: { color: '#fff', fontSize: 18, fontWeight: '600', },
+  linkButton: { marginTop: 20, alignSelf: 'center', },
+  linkText: { color: '#007AFF', fontSize: 16, },
 });

@@ -2,42 +2,12 @@ import { Stack } from 'expo-router';
 
 export default function StringerLayout() {
   return (
-    <Stack>
-      <Stack.Screen 
-        name="index" 
-        options={{ 
-          title: 'Dashboard',
-          headerShown: true 
-        }} 
-      />
-      <Stack.Screen 
-        name="jobs" 
-        options={{ 
-          title: 'Jobs',
-          headerShown: true 
-        }} 
-      />
-      <Stack.Screen 
-        name="clients" 
-        options={{ 
-          title: 'Clients',
-          headerShown: true 
-        }} 
-      />
-      <Stack.Screen 
-        name="inventory" 
-        options={{ 
-          title: 'Inventory',
-          headerShown: true 
-        }} 
-      />
-      <Stack.Screen 
-        name="settings" 
-        options={{ 
-          title: 'Settings',
-          headerShown: true 
-        }} 
-      />
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+      <Stack.Screen name="jobs" />
+      <Stack.Screen name="clients" />
+      <Stack.Screen name="inventory" />
+      <Stack.Screen name="settings" />
     </Stack>
   );
 } 

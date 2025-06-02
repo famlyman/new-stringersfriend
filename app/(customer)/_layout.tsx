@@ -3,8 +3,8 @@ import { Stack } from 'expo-router';
 
 export default function CustomerLayout() {
   return (
-    <Stack>
-      <Stack.Screen name="index" options={{ title: 'Customer Dashboard' }} />
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
       {/* Add other customer-specific screens here */}
     </Stack>
   );

@@ -1,36 +1,89 @@
 // app/(auth)/login.tsx
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, ActivityIndicator, Alert, Pressable } from 'react-native';
-import { supabase } from '../../src/lib/supabase'; // Path confirmed correct
-import { useRouter, Link } from 'expo-router';
+import { View, Text, TextInput, ActivityIndicator, Alert, StyleSheet, TouchableOpacity } from 'react-native';
+import { supabase } from '../../src/lib/supabase';
+import { useRouter } from 'expo-router';
+import { useAuth } from '../../src/contexts/AuthContext';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { session, isLoading } = useAuth();
+
+  // If we're already logged in, redirect to role selection
+  React.useEffect(() => {
+    if (session && !isLoading) {
+      console.log("Login: Session exists, checking profile...");
+      checkProfile();
+    }
+  }, [session, isLoading]);
+
+  async function checkProfile() {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('is_stringer')
+        .eq('id', session?.user?.id)
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          console.log("Login: No profile found, redirecting to role select");
+          router.replace('/(auth)/role-select');
+        } else {
+          console.error("Login: Error checking profile:", error);
+          Alert.alert("Error", "Failed to check profile status");
+        }
+      } else if (profile) {
+        console.log("Login: Profile found, redirecting based on role");
+        if (profile.is_stringer) {
+          router.replace('/(stringer)/onboarding');
+        } else {
+          router.replace('/(customer)');
+        }
+      }
+    } catch (error) {
+      console.error("Login: Error in checkProfile:", error);
+    }
+  }
 
   async function signInWithEmail() {
+    if (loading) return;
+    
     setLoading(true);
-    console.log('Attempting Sign In with:', { email, password });
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email,
-      password: password,
-    });
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
 
-    if (error) {
-      console.error('Sign In Error:', error.message);
-      Alert.alert('Sign In Failed', error.message);
-    } else {
-      console.log('Sign In Successful!');
-      // Auth state change listener in AuthContext will handle navigation
+      if (error) {
+        throw error;
+      }
+
+      console.log("Login: Sign in successful, waiting for session...");
+    } catch (error: any) {
+      console.error("Login error:", error.message);
+      Alert.alert("Error", error.message);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
+  }
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
   }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome Stringer!</Text>
+      <Text style={styles.title}>Sign In</Text>
       <TextInput
         style={styles.input}
         placeholder="Email"
@@ -38,6 +91,7 @@ export default function LoginScreen() {
         onChangeText={setEmail}
         autoCapitalize="none"
         keyboardType="email-address"
+        editable={!loading}
       />
       <TextInput
         style={styles.input}
@@ -45,51 +99,80 @@ export default function LoginScreen() {
         value={password}
         onChangeText={setPassword}
         secureTextEntry
+        editable={!loading}
       />
-      <Button
-        title={loading ? 'Loading...' : 'Sign In'}
-        onPress={signInWithEmail}
+      <TouchableOpacity 
+        style={[styles.button, loading && styles.buttonDisabled]} 
+        onPress={signInWithEmail} 
         disabled={loading}
-      />
-      <View style={styles.separator} />
-      {/* Link to the main register screen: /(auth)/register */}
-      <Link href="/(auth)/register" asChild>
-        <Pressable disabled={loading}>
-          <Text style={styles.linkText}>Don't have an account? Create Account</Text>
-        </Pressable>
-      </Link>
+      >
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Sign In</Text>
+        )}
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.linkButton}
+        onPress={() => router.push('/(auth)/register')}
+        disabled={loading}
+      >
+        <Text style={styles.linkText}>Don't have an account? Create Account</Text>
+      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 20,
+  container: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    padding: 20, 
     backgroundColor: '#f5f5f5',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 30,
-    textAlign: 'center',
+  title: { 
+    fontSize: 28, 
+    fontWeight: 'bold', 
+    marginBottom: 30, 
+    textAlign: 'center', 
+    color: '#333',
   },
-  input: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 15,
-    borderWidth: 1,
+  input: { 
+    backgroundColor: '#fff', 
+    padding: 15, 
+    borderRadius: 8, 
+    marginBottom: 15, 
+    fontSize: 16, 
+    borderWidth: 1, 
     borderColor: '#ddd',
   },
-  separator: {
-    height: 20,
+  button: { 
+    backgroundColor: '#007AFF', 
+    padding: 15, 
+    borderRadius: 8, 
+    alignItems: 'center', 
+    marginBottom: 15,
   },
-  linkText: {
-    color: '#3498db',
-    textAlign: 'center',
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  buttonText: { 
+    color: '#fff', 
+    fontSize: 18, 
+    fontWeight: '600',
+  },
+  linkButton: { 
+    marginTop: 20, 
+    alignSelf: 'center',
+  },
+  linkText: { 
+    color: '#007AFF', 
+    fontSize: 16,
+  },
+  loadingText: {
     marginTop: 10,
     fontSize: 16,
+    color: '#666',
   },
 });
