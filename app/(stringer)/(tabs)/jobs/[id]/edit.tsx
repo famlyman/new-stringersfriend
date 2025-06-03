@@ -2,8 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
-import { Job, JobFormData } from '../../../../src/types/job';
-import JobForm from '../../../components/JobForm';
+import { Job, JobFormData } from '../../../../../src/types/job';
+import JobForm from '../../../../components/JobForm';
 
 // Mock job data - in a real app, this would be fetched from your database
 const mockJob: Job = {

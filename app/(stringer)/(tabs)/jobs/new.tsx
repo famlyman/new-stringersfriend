@@ -2,8 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
-import JobForm from '../../components/JobForm';
-import { JobFormData } from '../../../src/types/job';
+import JobForm from '../../../components/JobForm';
+import { JobFormData } from '../../../../src/types/job';
 
 export default function NewJobScreen() {
   const router = useRouter();
@@ -27,7 +27,7 @@ export default function NewJobScreen() {
             text: 'OK',
             onPress: () => {
               // Navigate back to jobs list
-              router.replace('/(tabs)/jobs');
+              router.replace('/(stringer)/(tabs)/jobs');
             },
           },
         ]

@@ -60,7 +60,7 @@ export default function RoleSelectScreen() {
             id: session.user.id,
             role: role,
             updated_at: new Date().toISOString(),
-            username: session.user.email || session.user.id,
+            username: session.user.email?.split('@')[0] || `user_${session.user.id.slice(0, 8)}`,
             full_name: session.user.email?.split('@')[0] || 'User'
           }, 
           { onConflict: 'id' }

@@ -4,10 +4,8 @@ export default function StringerLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
-      <Stack.Screen name="jobs" />
-      <Stack.Screen name="clients" />
-      <Stack.Screen name="inventory" />
-      <Stack.Screen name="settings" />
+      <Stack.Screen name="onboarding" />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
     </Stack>
   );
 } 

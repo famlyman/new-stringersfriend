@@ -1,87 +1,205 @@
 // app/(auth)/register.tsx
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, ActivityIndicator, Alert, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../src/lib/supabase';
-import { useRouter } from 'expo-router';
-import { useAuth } from '../../src/contexts/AuthContext';
 
 export default function RegisterScreen() {
+  const router = useRouter();
+  const { selectedRole } = useLocalSearchParams<{ selectedRole: 'stringer' | 'customer' }>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
-  const { session } = useAuth();
+  const [error, setError] = useState<string | null>(null);
 
-  async function signUpWithEmail() {
+  const handleRegister = async () => {
+    if (loading) return;
     setLoading(true);
+    setError(null);
+
     try {
-      // First, sign up the user
-      const { error: signUpError } = await supabase.auth.signUp({
-        email: email,
-        password: password,
+      console.log("Starting registration process...");
+      
+      // Validate email and password
+      if (!email || !password) {
+        throw new Error('Please enter both email and password');
+      }
+
+      if (password.length < 6) {
+        throw new Error('Password must be at least 6 characters');
+      }
+
+      // Create the user account
+      console.log("Creating user account...");
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            username: email.split('@')[0],
+            full_name: email.split('@')[0]
+          }
+        }
       });
 
-      if (signUpError) {
-        throw signUpError;
+      if (authError) {
+        console.error("Auth error details:", {
+          message: authError.message,
+          status: authError.status,
+          name: authError.name
+        });
+        throw authError;
       }
 
-      // Delete any existing profile to ensure clean state
-      if (session?.user?.id) {
-        await supabase
+      if (!authData.user) {
+        throw new Error('Failed to create user account');
+      }
+
+      console.log("User created successfully:", authData.user.id);
+      
+      // Wait a moment for the trigger to create the profile
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Check if profile exists
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authData.user.id)
+        .single();
+
+      if (profileError) {
+        console.error("Profile check error:", profileError);
+        // If profile doesn't exist, create it manually
+        const { error: createError } = await supabase
           .from('profiles')
-          .delete()
-          .eq('id', session.user.id);
+          .insert({
+            id: authData.user.id,
+            username: email.split('@')[0],
+            full_name: email.split('@')[0],
+            role: selectedRole || 'customer',
+            updated_at: new Date().toISOString()
+          });
+
+        if (createError) {
+          console.error("Manual profile creation error:", createError);
+          throw new Error(`Failed to create profile: ${createError.message}`);
+        }
+      } else if (profile) {
+        // Update the role if profile exists
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ role: selectedRole || 'customer' })
+          .eq('id', authData.user.id);
+
+        if (updateError) {
+          console.error("Profile update error:", updateError);
+          throw new Error(`Failed to update profile: ${updateError.message}`);
+        }
       }
 
-      Alert.alert("Account Created!", "Please check your email to confirm your account (if email confirmation is enabled).");
-      console.log("Registration successful! Redirecting to role selection.");
-      router.push('/(auth)/role-select');
+      console.log("Registration successful!");
+      router.replace('/(auth)/login');
     } catch (error: any) {
-      Alert.alert("Error", error.message);
-      console.error("Registration error:", error.message);
+      console.error("Registration error:", error);
+      setError(error.message || 'An error occurred during registration');
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Create Account</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-      <TouchableOpacity style={styles.button} onPress={signUpWithEmail} disabled={loading}>
-        <Text style={styles.buttonText}>{loading ? <ActivityIndicator color="#fff" /> : "Sign Up"}</Text>
-      </TouchableOpacity>
+      <Text style={styles.subtitle}>Join Stringer's Friend as a {selectedRole || 'user'}</Text>
 
-      <TouchableOpacity
-        style={styles.linkButton}
-        onPress={() => router.push('/(auth)/login')}
-      >
-        <Text style={styles.linkText}>Already have an account? Sign In</Text>
-      </TouchableOpacity>
+      <View style={styles.form}>
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+
+        <TouchableOpacity
+          style={[styles.button, loading && styles.buttonDisabled]}
+          onPress={handleRegister}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Create Account</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.linkButton}
+          onPress={() => router.push('/(auth)/login')}
+        >
+          <Text style={styles.linkText}>Already have an account? Sign In</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 20, backgroundColor: '#f5f5f5', },
-  title: { fontSize: 28, fontWeight: 'bold', marginBottom: 30, textAlign: 'center', color: '#333', },
-  input: { backgroundColor: '#fff', padding: 15, borderRadius: 8, marginBottom: 15, fontSize: 16, borderWidth: 1, borderColor: '#ddd', },
-  button: { backgroundColor: '#007AFF', padding: 15, borderRadius: 8, alignItems: 'center', marginBottom: 15, },
-  buttonText: { color: '#fff', fontSize: 18, fontWeight: '600', },
-  linkButton: { marginTop: 20, alignSelf: 'center', },
-  linkText: { color: '#007AFF', fontSize: 16, },
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: '#f5f5f5',
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 18,
+    color: '#666',
+    marginBottom: 40,
+    textAlign: 'center',
+  },
+  form: {
+    gap: 15,
+  },
+  input: {
+    backgroundColor: '#fff',
+    padding: 15,
+    borderRadius: 8,
+    fontSize: 16,
+  },
+  button: {
+    backgroundColor: '#007AFF',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  linkButton: {
+    marginTop: 15,
+    alignItems: 'center',
+  },
+  linkText: {
+    color: '#007AFF',
+    fontSize: 16,
+  },
 });

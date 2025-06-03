@@ -1,5 +1,5 @@
 // app/(auth)/_layout.tsx
-import { Stack } from 'expo-router';
+import { Stack, usePathname, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { supabase } from '../../src/lib/supabase';
@@ -8,78 +8,84 @@ import { useRouter } from 'expo-router';
 export default function AuthLayout() {
   const { session, isLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const params = useLocalSearchParams();
 
   useEffect(() => {
-    async function checkAuthState() {
-      console.log("AuthLayout: Checking auth state...", { hasSession: !!session, isLoading });
-      
-      if (isLoading) {
-        console.log("AuthLayout: Still loading...");
+    const checkAuthState = async () => {
+      console.log("AuthLayout: Checking auth state...", {
+        hasSession: !!session,
+        isLoading,
+        pathname
+      });
+
+      // Don't redirect if we're on the root path
+      if (pathname === '/') {
+        console.log("AuthLayout: On root path, no redirect needed");
         return;
       }
 
-      if (!session) {
-        console.log("AuthLayout: No session, staying on welcome screen");
+      // Don't redirect if we're going to registration with a selected role
+      if (pathname === '/register' && params.selectedRole) {
+        console.log("AuthLayout: Going to registration with selected role, no redirect needed");
         return;
       }
 
-      console.log("AuthLayout: Fetching profile data...");
-      try {
-        // First try to get the profile
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
+      // Don't redirect if we're going to login
+      if (pathname === '/login') {
+        console.log("AuthLayout: Going to login, no redirect needed");
+        return;
+      }
 
-        if (error) {
-          if (error.code === 'PGRST116') {
-            // No profile exists, stay on welcome screen for role selection
-            console.log("AuthLayout: No profile found, staying on welcome screen");
-            return;
-          } else {
-            console.error("AuthLayout: Profile error:", error);
-            // Create a basic profile
-            console.log("AuthLayout: Creating basic profile...");
-            const { error: createError } = await supabase
-              .from('profiles')
-              .insert({
-                id: session.user.id,
-                username: session.user.email || session.user.id,
-                full_name: session.user.email?.split('@')[0] || 'User',
-                updated_at: new Date().toISOString()
-              });
-            
-            if (createError) {
-              console.error("AuthLayout: Failed to create profile:", createError);
-            }
-            // Stay on welcome screen for role selection
+      if (!session && !isLoading) {
+        console.log("AuthLayout: No session, redirecting to root");
+        router.replace('/');
+        return;
+      }
+
+      if (session?.user?.id) {
+        try {
+          console.log("AuthLayout: Fetching profile...");
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          if (profileError) {
+            console.error("AuthLayout: Error fetching profile:", profileError);
+            throw profileError;
+          }
+
+          if (!profile) {
+            console.log("AuthLayout: No profile found, redirecting to root");
+            router.replace('/');
             return;
           }
-        }
 
-        // If we have a profile, check if it has a role
-        if (!profile.role) {
-          console.log("AuthLayout: Profile exists but no role set, staying on welcome screen");
-          return;
-        }
+          if (!profile.role) {
+            console.log("AuthLayout: No role set, redirecting to root");
+            router.replace('/');
+            return;
+          }
 
-        // Redirect based on role
-        if (profile.role === 'stringer') {
-          console.log("AuthLayout: Stringer profile found, redirecting to stringer area");
-          router.replace('/(stringer)/onboarding');
-        } else {
-          console.log("AuthLayout: Customer profile found, redirecting to customer area");
-          router.replace('/(customer)');
+          // Redirect based on role
+          if (profile.role === 'stringer') {
+            console.log("AuthLayout: Redirecting to stringer onboarding");
+            router.replace('/(stringer)/onboarding');
+          } else if (profile.role === 'customer') {
+            console.log("AuthLayout: Redirecting to customer area");
+            router.replace('/(customer)');
+          }
+        } catch (error) {
+          console.error("AuthLayout: Error in auth check:", error);
+          router.replace('/');
         }
-      } catch (error) {
-        console.error("AuthLayout: Error checking profile:", error);
-        // Stay on welcome screen on error
       }
-    }
+    };
 
     checkAuthState();
-  }, [session, isLoading]);
+  }, [session, isLoading, pathname, params]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

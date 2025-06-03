@@ -1,16 +1,14 @@
 // src/contexts/AuthContext.tsx
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { Session, User } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase'; // Adjust path if needed
-import { router } from 'expo-router';
+import { supabase } from '../lib/supabase';
+import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 
 interface AuthContextType {
   session: Session | null;
   user: User | null;
   isLoading: boolean; // Is the auth state currently being loaded?
-  signOut: () => Promise<void>;
-  clearSession: () => Promise<void>;
   // Add any other auth-related functions you might need, e.g., signIn, signUp
 }
 
@@ -25,28 +23,7 @@ export default function AuthProvider({ children, initialSession }: AuthProviderP
   const [session, setSession] = useState<Session | null>(initialSession || null);
   const [user, setUser] = useState<User | null>(initialSession?.user || null);
   const [isLoading, setIsLoading] = useState(true);
-
-  const clearSession = async () => {
-    try {
-      // Clear Supabase session
-      await supabase.auth.signOut();
-      
-      // Clear local state
-      setSession(null);
-      setUser(null);
-      
-      // Clear SecureStore
-      await SecureStore.deleteItemAsync('supabase.auth.token');
-      
-      // Clear any other stored data
-      await SecureStore.deleteItemAsync('user_role');
-      await SecureStore.deleteItemAsync('user_profile');
-      
-      console.log("AuthProvider: Session cleared successfully");
-    } catch (error) {
-      console.error("AuthProvider: Error clearing session:", error);
-    }
-  };
+  const router = useRouter();
 
   useEffect(() => {
     let mounted = true;
@@ -92,9 +69,10 @@ export default function AuthProvider({ children, initialSession }: AuthProviderP
 
               // Handle sign out event
               if (_event === 'SIGNED_OUT') {
-                console.log("AuthProvider: User signed out, redirecting to login");
-                await clearSession();
-                router.replace('/(auth)/login');
+                console.log("AuthProvider: User signed out");
+                // Session clearing is handled in the settings screen
+                setSession(null);
+                setUser(null);
               }
             }
           }
@@ -114,22 +92,9 @@ export default function AuthProvider({ children, initialSession }: AuthProviderP
     }
 
     initializeAuth();
-  }, [initialSession]); // Add initialSession to dependencies
+  }, [initialSession]); 
 
-  const signOut = async () => {
-    setIsLoading(true);
-    try {
-      await clearSession();
-      console.log("AuthProvider: Signing out, redirecting to login");
-      router.replace('/(auth)/login');
-    } catch (error) {
-      console.error('Unexpected error during sign out:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const value = { session, user, isLoading, signOut, clearSession };
+  const value = { session, user, isLoading };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

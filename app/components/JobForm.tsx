@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { JobFormData } from '../../src/types/job';
+import { createJob } from '../../src/services/jobService';
+import { useRouter } from 'expo-router';
 
 interface JobFormProps {
   initialData?: Partial<JobFormData>;
@@ -18,14 +20,14 @@ const JobForm: React.FC<JobFormProps> = ({
   submitButtonText,
 }) => {
   const [formData, setFormData] = useState<JobFormData>({
-    client_id: '',
-    racquet_id: '',
-    string_id: '',
-    tension_main: '52',
-    tension_cross: '50',
-    notes: '',
-    price: '35',
-    ...initialData,
+    client_id: initialData.client_id || '',
+    racquet_id: initialData.racquet_id || '',
+    string_id: initialData.string_id || '',
+    cross_string_id: initialData.cross_string_id || '',
+    tension_main: initialData.tension_main || '52',
+    tension_cross: initialData.tension_cross || '50',
+    notes: initialData.notes || '',
+    price: initialData.price || '35',
   });
 
   // Mock data - in a real app, these would be fetched from your database
@@ -47,11 +49,36 @@ const JobForm: React.FC<JobFormProps> = ({
     { id: 'string3', name: 'Tecnifibre X-One Biphase' },
   ];
 
+  const router = useRouter();
+
   const handleSubmit = async () => {
     try {
-      await onSubmit(formData);
+      const { data, error } = await createJob(formData);
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data) {
+        Alert.alert(
+          'Success',
+          'Job created successfully!',
+          [
+            { 
+              text: 'OK', 
+              onPress: () => router.push('/jobs') 
+            }
+          ]
+        );
+        await onSubmit(formData);
+      }
     } catch (error) {
       console.error('Error submitting form:', error);
+      Alert.alert(
+        'Error',
+        error instanceof Error ? error.message : 'Failed to create job. Please try again.'
+      );
+      throw error; // Re-throw to let the parent component handle the error if needed
     }
   };
 
@@ -62,10 +89,24 @@ const JobForm: React.FC<JobFormProps> = ({
     }));
   };
 
+  const handleAddClient = () => {
+    // Navigate to the new client screen in the stringer section
+    router.push('/(stringer)/clients/new');
+  };
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Client</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Client</Text>
+          <TouchableOpacity 
+            onPress={handleAddClient}
+            style={styles.addButton}
+          >
+            <Ionicons name="add-circle" size={20} color="#007AFF" />
+            <Text style={styles.addButtonText}>Add Client</Text>
+          </TouchableOpacity>
+        </View>
         <View style={styles.pickerContainer}>
           <Picker
             selectedValue={formData.client_id}
@@ -103,17 +144,34 @@ const JobForm: React.FC<JobFormProps> = ({
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>String & Tension</Text>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={formData.string_id}
-            onValueChange={(value) => handleChange('string_id', value)}
-            style={styles.picker}
-          >
-            <Picker.Item label="Select a string..." value="" />
-            {strings.map(string => (
-              <Picker.Item key={string.id} label={string.name} value={string.id} />
-            ))}
-          </Picker>
+        <View style={styles.stringsContainer}>
+          <View style={[styles.pickerContainer, styles.stringPicker]}>
+            <Text style={styles.stringLabel}>Mains:</Text>
+            <Picker
+              selectedValue={formData.string_id}
+              onValueChange={(value) => handleChange('string_id', value)}
+              style={styles.picker}
+            >
+              <Picker.Item label="Select mains..." value="" />
+              {strings.map(string => (
+                <Picker.Item key={string.id} label={string.name} value={string.id} />
+              ))}
+            </Picker>
+          </View>
+          
+          <View style={[styles.pickerContainer, styles.stringPicker]}>
+            <Text style={styles.stringLabel}>Crosses:</Text>
+            <Picker
+              selectedValue={formData.cross_string_id}
+              onValueChange={(value) => handleChange('cross_string_id', value)}
+              style={styles.picker}
+            >
+              <Picker.Item label="Select crosses..." value="" />
+              {strings.map(string => (
+                <Picker.Item key={`cross-${string.id}`} label={string.name} value={string.id} />
+              ))}
+            </Picker>
+          </View>
         </View>
 
         <View style={styles.tensionContainer}>
@@ -163,7 +221,8 @@ const JobForm: React.FC<JobFormProps> = ({
           numberOfLines={4}
           value={formData.notes}
           onChangeText={(value) => handleChange('notes', value)}
-          placeholder="Any special instructions or notes..."
+          placeholder="Enter any special instructions, notes, or additional details here..."
+          placeholderTextColor="#666"
           textAlignVertical="top"
         />
       </View>
@@ -171,7 +230,7 @@ const JobForm: React.FC<JobFormProps> = ({
       <TouchableOpacity 
         style={[styles.submitButton, isLoading && styles.submitButtonDisabled]} 
         onPress={handleSubmit}
-        disabled={isLoading || !formData.client_id || !formData.racquet_id || !formData.string_id}
+        disabled={isLoading || !formData.client_id || !formData.racquet_id || !formData.string_id || !formData.cross_string_id}
       >
         {isLoading ? (
           <ActivityIndicator color="#fff" />
@@ -200,11 +259,30 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 1,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1a1a1a',
-    marginBottom: 12,
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+  },
+  addButtonText: {
+    marginLeft: 4,
+    color: '#007AFF',
+    fontSize: 14,
+    fontWeight: '500',
   },
   pickerContainer: {
     borderWidth: 1,
@@ -215,11 +293,28 @@ const styles = StyleSheet.create({
   },
   picker: {
     width: '100%',
-    height: 50,
+    height: 65,
+  },
+  stringsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    marginBottom: 16,
+  },
+  stringPicker: {
+    width: '48%',
+    marginBottom: 8,
+  },
+  stringLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
+    fontWeight: '500',
   },
   tensionContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: 8,
   },
   tensionInputContainer: {
     width: '48%',

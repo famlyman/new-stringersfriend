@@ -24,7 +24,7 @@ export default function LoginScreen() {
     try {
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('is_stringer')
+        .select('role')
         .eq('id', session?.user?.id)
         .single();
 
@@ -38,10 +38,26 @@ export default function LoginScreen() {
         }
       } else if (profile) {
         console.log("Login: Profile found, redirecting based on role");
-        if (profile.is_stringer) {
-          router.replace('/(stringer)/onboarding');
-        } else {
+        if (profile.role === 'stringer') {
+          // Check if stringer has completed onboarding
+          const { data: stringerData, error: stringerError } = await supabase
+            .from('stringers')
+            .select('id')
+            .eq('id', session?.user?.id)
+            .single();
+
+          if (stringerError || !stringerData) {
+            console.log("Login: Stringer needs onboarding");
+            router.replace('/(stringer)/onboarding');
+          } else {
+            console.log("Login: Stringer has completed onboarding");
+            router.replace('/(stringer)/(tabs)/dashboard');
+          }
+        } else if (profile.role === 'customer') {
           router.replace('/(customer)');
+        } else {
+          console.log("Login: No role set, redirecting to role select");
+          router.replace('/(auth)/role-select');
         }
       }
     } catch (error) {
@@ -54,7 +70,7 @@ export default function LoginScreen() {
     
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: email,
         password: password,
       });
@@ -63,7 +79,9 @@ export default function LoginScreen() {
         throw error;
       }
 
-      console.log("Login: Sign in successful, waiting for session...");
+      console.log("Login: Sign in successful");
+      // The session will be updated by the auth state change listener
+      // and the useEffect will handle the redirect
     } catch (error: any) {
       console.error("Login error:", error.message);
       Alert.alert("Error", error.message);

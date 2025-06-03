@@ -1,4 +1,4 @@
-// app/(tabs)/jobs/_layout.tsx
+// app/(stringer)/(tabs)/jobs/_layout.tsx
 import { Stack } from 'expo-router';
 import React from 'react';
 import { Pressable } from 'react-native';
@@ -26,13 +26,6 @@ export default function JobsLayout() {
         name="[id]" // Job Details screen
         options={{
           title: 'Job Details',
-        }}
-      />
-      <Stack.Screen
-        name="[id]/edit" // Edit Job screen
-        options={{
-          title: 'Edit Job',
-          presentation: 'modal',
         }}
       />
     </Stack>

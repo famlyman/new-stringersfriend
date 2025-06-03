@@ -12,8 +12,11 @@ export default function WelcomeScreen() {
 
   const selectRole = async (role: 'stringer' | 'customer') => {
     if (!session?.user?.id) {
-      // If not logged in, go to registration
-      router.push('/(auth)/register');
+      // If not logged in, go to registration with selected role
+      router.push({
+        pathname: '/(auth)/register',
+        params: { selectedRole: role }
+      });
       return;
     }
 
@@ -29,7 +32,6 @@ export default function WelcomeScreen() {
             id: session.user.id,
             role: role,
             updated_at: new Date().toISOString(),
-            username: session.user.email || session.user.id,
             full_name: session.user.email?.split('@')[0] || 'User'
           }, 
           { onConflict: 'id' }
@@ -55,6 +57,16 @@ export default function WelcomeScreen() {
       );
     } finally {
       setSelectingRole(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      router.replace('/(auth)/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      Alert.alert('Error', 'Failed to sign out. Please try again.');
     }
   };
 
@@ -118,14 +130,14 @@ export default function WelcomeScreen() {
         {session ? (
           <TouchableOpacity
             style={styles.authButton}
-            onPress={() => supabase.auth.signOut()}
+            onPress={handleSignOut}
           >
             <Text style={styles.authButtonText}>Sign Out</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
             style={styles.authButton}
-            onPress={() => router.push('/(auth)/login')}
+            onPress={() => router.replace('/(auth)/login')}
           >
             <Text style={styles.authButtonText}>Already have an account? Sign In</Text>
           </TouchableOpacity>
@@ -142,38 +154,40 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: 20,
+    flexGrow: 1,
+    justifyContent: 'space-between',
   },
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 20,
     marginTop: 20,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#333',
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   subtitle: {
-    fontSize: 18,
+    fontSize: 16,
     color: '#666',
     textAlign: 'center',
   },
   featuresContainer: {
-    marginBottom: 40,
+    marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 20,
+    marginBottom: 15,
   },
   featureCard: {
     backgroundColor: '#fff',
-    padding: 20,
+    padding: 15,
     borderRadius: 12,
-    marginBottom: 15,
+    marginBottom: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -189,16 +203,16 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
   },
   featureTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   featureDescription: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#666',
-    lineHeight: 24,
-    marginBottom: 15,
+    lineHeight: 20,
+    marginBottom: 10,
   },
   cardFooter: {
     flexDirection: 'row',
@@ -206,18 +220,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderTopWidth: 1,
     borderTopColor: '#eee',
-    paddingTop: 15,
+    paddingTop: 10,
   },
   getStartedText: {
     color: '#007AFF',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
   },
   roleLoading: {
     marginLeft: 10,
   },
   authContainer: {
-    marginTop: 20,
+    marginTop: 10,
   },
   authButton: {
     backgroundColor: '#007AFF',
@@ -227,7 +241,7 @@ const styles = StyleSheet.create({
   },
   authButtonText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
   },
   loadingText: {

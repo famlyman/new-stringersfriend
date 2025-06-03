@@ -24,6 +24,7 @@ export interface JobFormData {
   client_id: string;
   racquet_id: string;
   string_id: string;
+  cross_string_id?: string;  // Made optional with '?'
   tension_main: string;
   tension_cross: string;
   price: string;

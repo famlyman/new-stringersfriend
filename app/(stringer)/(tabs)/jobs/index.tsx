@@ -11,7 +11,7 @@ const jobs = [
 
 export default function JobsScreen() {
   const renderItem = ({ item }: { item: typeof jobs[0] }) => (
-    <Link href={`/jobs/${item.id}`} asChild>
+    <Link href={`/(stringer)/(tabs)/jobs/${item.id}`} asChild>
       <TouchableOpacity style={styles.jobItem}>
         <View style={styles.jobInfo}>
           <Text style={styles.jobTitle}>{item.title}</Text>
@@ -33,7 +33,7 @@ export default function JobsScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Jobs</Text>
-        <Link href="/jobs/new" asChild>
+        <Link href="/(stringer)/(tabs)/jobs/new" asChild>
           <TouchableOpacity style={styles.addButton}>
             <Ionicons name="add" size={24} color="white" />
           </TouchableOpacity>

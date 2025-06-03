@@ -82,60 +82,31 @@ export default function StringerOnboardingScreen() {
     fetchExistingData();
   }, [session]); // Re-run if session changes
 
-  async function handleOnboardingComplete() {
-    if (!session?.user?.id) {
-      Alert.alert("Error", "No user session found. Please log in again.");
-      router.replace('/(auth)/index'); // Or login page
-      return;
-    }
-
-    setLoading(true);
+  const handleSubmit = async () => {
+    if (!session?.user?.id) return;
 
     try {
-      // 1. Update profiles table with full_name (if provided)
-      const { error: profileUpdateError } = await supabase
-        .from('profiles')
-        .upsert(
-          { id: session.user.id, full_name: fullName, updated_at: new Date().toISOString() },
-          { onConflict: 'id', ignoreDuplicates: false } // Ensures update if row exists
-        );
-
-      if (profileUpdateError) {
-        throw new Error(`Profile update failed: ${profileUpdateError.message}`);
-      }
-
-      // 2. Prepare business_hours for JSONB storage
-      const formattedBusinessHours = businessHoursInput ? { text: businessHoursInput } : null;
-
-      // 3. Upsert into stringers table
-      const { error: stringerUpsertError } = await supabase
+      const { error } = await supabase
         .from('stringers')
-        .upsert(
-          {
-            id: session.user.id,
-            shop_name: shopName,
-            phone_number: phoneNumber,
-            address: address,
-            business_hours: formattedBusinessHours, // Store as JSONB object
-            logo_url: logoUrl,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'id' } // If a stringer entry already exists, update it
-        );
+        .insert({
+          id: session.user.id,
+          business_name: shopName,
+          phone: phoneNumber,
+          address: address,
+          business_hours: businessHoursInput ? { text: businessHoursInput } : null,
+          logo_url: logoUrl,
+          updated_at: new Date().toISOString()
+        });
 
-      if (stringerUpsertError) {
-        throw new Error(`Stringer data upsert failed: ${stringerUpsertError.message}`);
-      }
+      if (error) throw error;
 
-      Alert.alert("Success", "Onboarding complete! Welcome, Stringer!");
-      router.replace('/(tabs)'); // Redirect to the main stringer dashboard
-    } catch (error: any) {
-      console.error("Error during onboarding:", error.message);
-      Alert.alert("Onboarding Failed", error.message);
-    } finally {
-      setLoading(false);
+      Alert.alert('Success', 'Your profile has been created!');
+      router.replace('/(stringer)/(tabs)');
+    } catch (error) {
+      console.error('Error creating stringer profile:', error);
+      Alert.alert('Error', 'Failed to create profile. Please try again.');
     }
-  }
+  };
 
   if (loading && !session?.user?.id) { // Show initial loading if fetching data on mount
     return (
@@ -208,7 +179,7 @@ export default function StringerOnboardingScreen() {
 
           <TouchableOpacity
             style={styles.button}
-            onPress={handleOnboardingComplete}
+            onPress={handleSubmit}
             disabled={loading}
           >
             {loading ? (

@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Job, JobStatus, statusConfig } from '../../../src/types/job';
+import { Job, JobStatus, statusConfig } from '../../../../src/types/job';
 
 // Mock data - will be replaced with actual API calls
 const mockJob: Job = {
@@ -142,7 +142,7 @@ export default function JobDetailScreen() {
                   [
                     {
                       text: 'Edit Job',
-                      onPress: () => router.push(`/(tabs)/jobs/${job.id}/edit`),
+                      onPress: () => router.push(`/(stringer)/(tabs)/jobs/${job.id}/edit`),
                     },
                     {
                       text: 'Delete Job',
@@ -178,7 +178,7 @@ export default function JobDetailScreen() {
           <Text style={styles.sectionTitle}>Client</Text>
           <TouchableOpacity 
             style={styles.infoCard}
-            onPress={() => router.push(`/(tabs)/clients/${job.client_id}`)}
+            onPress={() => router.push(`/(stringer)/(tabs)/clients/${job.client_id}`)}
           >
             <View style={styles.infoIcon}>
               <Ionicons name="person-outline" size={20} color="#007AFF" />
