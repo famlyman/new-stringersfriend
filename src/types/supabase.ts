@@ -47,6 +47,7 @@ export interface Database {
           created_at: string
           updated_at: string
           user_id: string
+          stringer_id: string
           client_id: string
           racquet_id: string
           string_id: string
@@ -63,6 +64,7 @@ export interface Database {
           created_at?: string
           updated_at?: string
           user_id: string
+          stringer_id: string
           client_id: string
           racquet_id: string
           string_id: string
@@ -71,24 +73,25 @@ export interface Database {
           status?: 'pending' | 'in_progress' | 'completed' | 'picked_up'
           notes?: string
           price: number
-          completed_at?: string
-          picked_up_at?: string
+          completed_at?: string | null
+          picked_up_at?: string | null
         }
         Update: {
           id?: string
           created_at?: string
           updated_at?: string
           user_id?: string
+          stringer_id?: string
           client_id?: string
           racquet_id?: string
           string_id?: string
           tension_main?: number
           tension_cross?: number
           status?: 'pending' | 'in_progress' | 'completed' | 'picked_up'
-          notes?: string
+          notes?: string | null
           price?: number
-          completed_at?: string
-          picked_up_at?: string
+          completed_at?: string | null
+          picked_up_at?: string | null
         }
       }
       clients: {

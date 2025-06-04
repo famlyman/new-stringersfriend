@@ -10,7 +10,7 @@ export interface BaseUser {
 
 export interface StringerProfile extends BaseUser {
   role: 'stringer';
-  business_name: string;
+  shop_name: string;
   business_address?: string;
   phone_number: string;
   is_verified: boolean;

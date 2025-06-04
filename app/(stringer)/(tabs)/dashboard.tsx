@@ -1,9 +1,87 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { useAuth } from '../../../src/contexts/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '../../../src/lib/supabase';
+
+interface DashboardStats {
+  activeJobs: number;
+  totalClients: number;
+  stringStock: number;
+}
 
 export default function DashboardScreen() {
   const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats>({
+    activeJobs: 0,
+    totalClients: 0,
+    stringStock: 0,
+  });
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch dashboard data
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!user?.id) return;
+      
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        // Fetch active jobs
+        const { count: activeJobs } = await supabase
+          .from('jobs')
+          .select('*', { count: 'exact', head: true })
+          .eq('stringer_id', user.id)
+          .in('status', ['pending', 'in_progress']);
+        
+        // Fetch total clients
+        const { count: totalClients } = await supabase
+          .from('clients')
+          .select('*', { count: 'exact', head: true })
+          .eq('stringer_id', user.id);
+        
+        // Fetch string inventory
+        const { data: inventory } = await supabase
+          .from('inventory')
+          .select('quantity')
+          .eq('stringer_id', user.id)
+          .eq('type', 'string');
+        
+        const stringStock = inventory?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
+        
+        setStats({
+          activeJobs: activeJobs || 0,
+          totalClients: totalClients || 0,
+          stringStock,
+        });
+      } catch (err) {
+        console.error('Error fetching dashboard data:', err);
+        setError('Failed to load dashboard data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchDashboardData();
+  }, [user?.id]);
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
@@ -14,15 +92,15 @@ export default function DashboardScreen() {
 
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
-          <Text style={styles.statNumber}>0</Text>
+          <Text style={styles.statNumber}>{stats.activeJobs}</Text>
           <Text style={styles.statLabel}>Active Jobs</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statNumber}>0</Text>
+          <Text style={styles.statNumber}>{stats.totalClients}</Text>
           <Text style={styles.statLabel}>Clients</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statNumber}>0</Text>
+          <Text style={styles.statNumber}>{stats.stringStock}</Text>
           <Text style={styles.statLabel}>Strings in Stock</Text>
         </View>
       </View>
@@ -41,6 +119,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#fff',
+  },
+  errorText: {
+    color: '#ff3b30',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 20,
   },
   header: {
     padding: 20,

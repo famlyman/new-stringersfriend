@@ -16,9 +16,14 @@ export default function WelcomeScreen() {
     if (!session?.user?.id) {
       console.log("No session, redirecting to registration with role:", role);
       // If not logged in, go to registration with selected role
+      console.log("Navigating to register with role:", role);
       router.push({
         pathname: '/(auth)/register',
-        params: { selectedRole: role }
+        params: { 
+          selectedRole: role,
+          // Add a timestamp to force re-render when navigating multiple times
+          _t: Date.now() 
+        }
       });
       return;
     }
@@ -37,9 +42,12 @@ export default function WelcomeScreen() {
             role: role,
             updated_at: new Date().toISOString(),
             full_name: session.user.email?.split('@')[0] || 'User'
-          }, 
-          { onConflict: 'id' }
-        );
+          },
+          { 
+            onConflict: 'id',
+            count: 'exact'  // Only return count, not the inserted rows
+          }
+        )
 
       if (upsertError) {
         console.error("Error updating profile:", upsertError);
@@ -48,26 +56,18 @@ export default function WelcomeScreen() {
 
       console.log(`Role set to: ${role}, redirecting...`);
 
+      // Use a small timeout to ensure state updates before navigation
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       // Redirect based on selected role
-      if (role === 'stringer') {
-        console.log("Attempting to redirect to stringer onboarding...");
-        try {
-          await router.replace('/(stringer)/onboarding');
-          console.log("Redirect successful");
-        } catch (redirectError) {
-          console.error("Redirect error:", redirectError);
-          throw redirectError;
-        }
-      } else {
-        console.log("Attempting to redirect to customer area...");
-        try {
-          await router.replace('/(customer)');
-          console.log("Redirect successful");
-        } catch (redirectError) {
-          console.error("Redirect error:", redirectError);
-          throw redirectError;
-        }
-      }
+      const redirectPath = role === 'stringer' 
+        ? '/(stringer)/onboarding' 
+        : '/(customer)';
+        
+      console.log("Attempting to redirect to:", redirectPath);
+      
+      // Use replace to prevent going back to welcome screen
+      router.replace(redirectPath);
     } catch (error: any) {
       console.error("Error in role selection:", error.message);
       Alert.alert(

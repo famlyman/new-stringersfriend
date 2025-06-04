@@ -3,53 +3,105 @@
 import '../src/config/polyfills';
 
 import { Stack, useRouter, useSegments, SplashScreen } from 'expo-router'; // Added useRouter, useSegments, SplashScreen
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, StatusBar, Platform, SafeAreaView } from 'react-native';
 import { useState, useEffect } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../src/lib/supabase';
 import AuthProvider, { useAuth } from '../src/contexts/AuthContext'; // Added useAuth
 import { clearDevSession } from '../src/utils/dev';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+// Create a client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
 // This component will handle the actual navigation logic based on auth state
 function AuthRedirector() {
-  const { session, isLoading } = useAuth(); // Get authentication state from the AuthContext
-  const router = useRouter(); // Expo Router's navigation hook
-  const segments = useSegments(); // Get the current route segments (e.g., ['(auth)', 'login'])
+  const { session, isLoading } = useAuth();
+  const router = useRouter();
+  const segments = useSegments();
+  const [isCheckingRole, setIsCheckingRole] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_RETRIES = 3;
 
   useEffect(() => {
-    // Only proceed with redirection logic once AuthProvider has finished loading
-    if (!isLoading) {
-      // Determine if the current route is within the public '(auth)' group
+    if (!isLoading && session?.user?.id && !isCheckingRole) {
       const inAuthGroup = segments[0] === '(auth)';
+      
+      if (inAuthGroup) {
+        const checkUserRole = async () => {
+          setIsCheckingRole(true);
+          try {
+            const { data: profile, error } = await supabase
+              .from('profiles')
+              .select('role')
+              .eq('id', session.user.id)
+              .single();
 
-      if (session) {
-        // User is logged in
-        SplashScreen.hideAsync(); // Hide the splash screen once authenticated
+            console.log('Profile fetch result:', { profile, error });
 
-        if (inAuthGroup) {
-          // If the authenticated user is currently on a public auth screen,
-          // redirect them to the stringer dashboard.
-          console.log("AuthRedirector: User is authenticated but on an auth route. Redirecting to /(stringer)/(tabs)/dashboard");
-          router.replace('/(stringer)/(tabs)/dashboard');
-        }
-        // If session exists and not inAuthGroup, user is already on a protected route, no redirect needed.
+            if (error) {
+              throw error;
+            }
+
+            if (profile) {
+              if (!profile.role && retryCount < MAX_RETRIES) {
+                // If role is null/undefined, retry after a delay
+                console.log(`Role not found, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
+                await new Promise(resolve => setTimeout(resolve, 500));
+                setRetryCount(prev => prev + 1);
+                return;
+              }
+
+              SplashScreen.hideAsync();
+              console.log(`AuthRedirector: User role is ${profile.role}, redirecting...`);
+              
+              if (profile.role === 'customer') {
+                router.replace('/(customer)');
+              } else {
+                // Default to stringer dashboard
+                router.replace('/(stringer)/(tabs)/dashboard');
+              }
+            }
+          } catch (error) {
+            console.error('Error checking user role:', error);
+            if (retryCount < MAX_RETRIES) {
+              console.log(`Retrying after error... (${retryCount + 1}/${MAX_RETRIES})`);
+              await new Promise(resolve => setTimeout(resolve, 500));
+              setRetryCount(prev => prev + 1);
+              return;
+            }
+            console.log('Max retries reached, defaulting to customer area');
+            router.replace('/(customer)');
+          } finally {
+            setIsCheckingRole(false);
+          }
+        };
+
+        checkUserRole();
       } else {
-        // User is NOT logged in
-        SplashScreen.hideAsync(); // Hide the splash screen once authentication state is determined (unauthenticated)
-
-        if (!inAuthGroup) {
-          // If the unauthenticated user is currently NOT on a public auth screen,
-          // redirect them to the public auth group (e.g., /login).
-          console.log("AuthRedirector: User is not authenticated. Redirecting to /(auth).");
-          router.replace('/(auth)');
-        }
-        // If !session and inAuthGroup, user is unauthenticated and on an auth route, no redirect needed.
+        SplashScreen.hideAsync();
+      }
+    } else if (!isLoading && !session) {
+      // User is not authenticated
+      SplashScreen.hideAsync();
+      const inAuthGroup = segments[0] === '(auth)';
+      
+      if (!inAuthGroup) {
+        console.log("AuthRedirector: User is not authenticated. Redirecting to /(auth).");
+        router.replace('/(auth)');
       }
     }
-  }, [session, isLoading, segments, router]); // Dependencies: session, isLoading, current route segments, and router instance
+  }, [session, isLoading, segments, router, isCheckingRole]);
 
   return null; // This component doesn't render anything, it just handles side effects (redirection)
 }
@@ -73,10 +125,27 @@ export default function RootLayout() {
     getInitialSession();
   }, []);
 
+  const router = useRouter();
+
   useEffect(() => {
-    // Clear session in development mode (as per your original code)
-    clearDevSession();
-  }, []);
+    // In development, clear session data when the app starts
+    const clearSession = async () => {
+      if (__DEV__) {
+        console.log('Development mode: Clearing session data');
+        try {
+          await clearDevSession();
+          // Clear any stored tokens or session data
+          await supabase.auth.signOut();
+          // Clear any cached routes or navigation state
+          router.replace('/(auth)');
+        } catch (error) {
+          console.error('Error clearing session data:', error);
+        }
+      }
+    };
+
+    clearSession();
+  }, [router]);
 
   // Show a loading indicator while the initial session is being fetched
   if (isLoading) {
@@ -89,33 +158,41 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider initialSession={initialSession}>
-      {/* AuthRedirector must be rendered inside AuthProvider to access the authentication context */}
-      <AuthRedirector />
-      <Stack screenOptions={{ headerShown: false }}>
-        {/* Public routes group */}
-        {/* The '(auth)' screen group is accessible to unauthenticated users.
-            Example: app/(auth)/login.tsx, app/(auth)/signup.tsx */}
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-
-        {/* Protected routes */}
-        {/* These routes are intended for authenticated users.
-            The AuthRedirector component will manage access to these based on session state.
-            Example: app/index.tsx, app/(tabs)/index.tsx, app/(stringer)/dashboard.tsx */}
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="(stringer)" options={{ headerShown: false }} />
-        <Stack.Screen name="(customer)" options={{ headerShown: false }} />
-      </Stack>
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider initialSession={initialSession}>
+        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+        <View style={{ flex: 1, backgroundColor: '#fff' }}>
+          <AuthRedirector />
+          <Stack screenOptions={{ 
+            headerShown: false,
+            contentStyle: { 
+              flex: 1,
+              backgroundColor: '#fff',
+            },
+            animation: 'fade',
+          }}>
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="(stringer)" />
+            <Stack.Screen name="(customer)" />
+          </Stack>
+        </View>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fff',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#fff',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
 });

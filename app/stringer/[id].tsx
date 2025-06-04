@@ -59,7 +59,7 @@ export default function StringerStorefront() {
           source={{ uri: stringer.avatar_url || 'https://via.placeholder.com/150' }}
           style={styles.avatar}
         />
-        <Text style={styles.businessName}>{stringer.business_name}</Text>
+        <Text style={styles.businessName}>{stringer.shop_name}</Text>
         <Text style={styles.location}>{stringer.business_address}</Text>
       </View>
 

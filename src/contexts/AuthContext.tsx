@@ -9,6 +9,7 @@ interface AuthContextType {
   session: Session | null;
   user: User | null;
   isLoading: boolean; // Is the auth state currently being loaded?
+  signOut: () => Promise<void>;
   // Add any other auth-related functions you might need, e.g., signIn, signUp
 }
 
@@ -24,6 +25,18 @@ export default function AuthProvider({ children, initialSession }: AuthProviderP
   const [user, setUser] = useState<User | null>(initialSession?.user || null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+
+  const signOut = useCallback(async () => {
+    try {
+      await supabase.auth.signOut();
+      setSession(null);
+      setUser(null);
+      router.replace('/(auth)');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      throw error;
+    }
+  }, [router]);
 
   useEffect(() => {
     let mounted = true;
@@ -94,7 +107,7 @@ export default function AuthProvider({ children, initialSession }: AuthProviderP
     initializeAuth();
   }, [initialSession]); 
 
-  const value = { session, user, isLoading };
+  const value = { session, user, isLoading, signOut };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -6,11 +6,44 @@ import { JobFormData } from '../../src/types/job';
 import { createJob } from '../../src/services/jobService';
 import { useRouter } from 'expo-router';
 
+type Client = {
+  id: string;
+  full_name: string;
+  email?: string;
+  phone?: string;
+};
+
+type Racquet = {
+  id: string;
+  brand: string;
+  model: string;
+  head_size?: number;
+  weight?: number;
+  balance?: number;
+  string_pattern?: string;
+};
+
+type String = {
+  id: string;
+  brand: string;
+  model: string;
+  type: string;
+  gauge?: string;
+  color?: string;
+  price: number;
+};
+
 interface JobFormProps {
   initialData?: Partial<JobFormData>;
   onSubmit: (data: JobFormData) => Promise<void>;
   isLoading: boolean;
   submitButtonText: string;
+  clients: Client[];
+  racquets: Racquet[];
+  strings: String[];
+  onAddClient: () => void;
+  onAddRacquet: () => void;
+  onAddString: () => void;
 }
 
 const JobForm: React.FC<JobFormProps> = ({
@@ -18,6 +51,12 @@ const JobForm: React.FC<JobFormProps> = ({
   onSubmit,
   isLoading,
   submitButtonText,
+  clients,
+  racquets,
+  strings,
+  onAddClient,
+  onAddRacquet,
+  onAddString,
 }) => {
   const [formData, setFormData] = useState<JobFormData>({
     client_id: initialData.client_id || '',
@@ -29,25 +68,6 @@ const JobForm: React.FC<JobFormProps> = ({
     notes: initialData.notes || '',
     price: initialData.price || '35',
   });
-
-  // Mock data - in a real app, these would be fetched from your database
-  const clients = [
-    { id: 'client1', name: 'John Doe' },
-    { id: 'client2', name: 'Jane Smith' },
-    { id: 'client3', name: 'Mike Johnson' },
-  ];
-
-  const racquets = [
-    { id: 'racquet1', name: 'Babolat Pure Aero' },
-    { id: 'racquet2', name: 'Wilson Pro Staff' },
-    { id: 'racquet3', name: 'Head Speed Pro' },
-  ];
-
-  const strings = [
-    { id: 'string1', name: 'Luxilon Alu Power 1.25' },
-    { id: 'string2', name: 'Solinco Hyper-G 1.25' },
-    { id: 'string3', name: 'Tecnifibre X-One Biphase' },
-  ];
 
   const router = useRouter();
 
@@ -82,16 +102,11 @@ const JobForm: React.FC<JobFormProps> = ({
     }
   };
 
-  const handleChange = (field: keyof JobFormData, value: string) => {
-    setFormData(prev => ({
+  const handleInputChange = (field: keyof JobFormData, value: string) => {
+    setFormData((prev: JobFormData) => ({
       ...prev,
-      [field]: value,
+      [field]: value
     }));
-  };
-
-  const handleAddClient = () => {
-    // Navigate to the new client screen in the stringer section
-    router.push('/(stringer)/clients/new');
   };
 
   return (
@@ -100,7 +115,7 @@ const JobForm: React.FC<JobFormProps> = ({
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Client</Text>
           <TouchableOpacity 
-            onPress={handleAddClient}
+            onPress={onAddClient}
             style={styles.addButton}
           >
             <Ionicons name="add-circle" size={20} color="#007AFF" />
@@ -110,23 +125,32 @@ const JobForm: React.FC<JobFormProps> = ({
         <View style={styles.pickerContainer}>
           <Picker
             selectedValue={formData.client_id}
-            onValueChange={(value) => handleChange('client_id', value)}
+            onValueChange={(value: string) => handleInputChange('client_id', value)}
             style={styles.picker}
           >
             <Picker.Item label="Select a client..." value="" />
             {clients.map(client => (
-              <Picker.Item key={client.id} label={client.name} value={client.id} />
+              <Picker.Item key={client.id} label={client.full_name} value={client.id} />
             ))}
           </Picker>
         </View>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Racquet</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Racquet</Text>
+          <TouchableOpacity 
+            onPress={onAddRacquet}
+            style={styles.addButton}
+          >
+            <Ionicons name="add-circle" size={20} color="#007AFF" />
+            <Text style={styles.addButtonText}>Add Racquet</Text>
+          </TouchableOpacity>
+        </View>
         <View style={styles.pickerContainer}>
           <Picker
             selectedValue={formData.racquet_id}
-            onValueChange={(value) => handleChange('racquet_id', value)}
+            onValueChange={(value: string) => handleInputChange('racquet_id', value)}
             style={styles.picker}
             enabled={!!formData.client_id}
           >
@@ -136,25 +160,42 @@ const JobForm: React.FC<JobFormProps> = ({
                 : "Select a client first"
             } value="" />
             {racquets.map(racquet => (
-              <Picker.Item key={racquet.id} label={racquet.name} value={racquet.id} />
+              <Picker.Item 
+                key={racquet.id} 
+                label={`${racquet.brand} ${racquet.model}`} 
+                value={racquet.id} 
+              />
             ))}
           </Picker>
         </View>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>String & Tension</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>String & Tension</Text>
+          <TouchableOpacity 
+            onPress={onAddString}
+            style={styles.addButton}
+          >
+            <Ionicons name="add-circle" size={20} color="#007AFF" />
+            <Text style={styles.addButtonText}>Add String</Text>
+          </TouchableOpacity>
+        </View>
         <View style={styles.stringsContainer}>
           <View style={[styles.pickerContainer, styles.stringPicker]}>
             <Text style={styles.stringLabel}>Mains:</Text>
             <Picker
               selectedValue={formData.string_id}
-              onValueChange={(value) => handleChange('string_id', value)}
+              onValueChange={(value: string) => handleInputChange('string_id', value)}
               style={styles.picker}
             >
               <Picker.Item label="Select mains..." value="" />
               {strings.map(string => (
-                <Picker.Item key={string.id} label={string.name} value={string.id} />
+                <Picker.Item 
+                  key={string.id} 
+                  label={`${string.brand} ${string.model} ${string.type}`} 
+                  value={string.id} 
+                />
               ))}
             </Picker>
           </View>
@@ -163,12 +204,16 @@ const JobForm: React.FC<JobFormProps> = ({
             <Text style={styles.stringLabel}>Crosses:</Text>
             <Picker
               selectedValue={formData.cross_string_id}
-              onValueChange={(value) => handleChange('cross_string_id', value)}
+              onValueChange={(value: string) => handleInputChange('cross_string_id', value || '')}
               style={styles.picker}
             >
               <Picker.Item label="Select crosses..." value="" />
               {strings.map(string => (
-                <Picker.Item key={`cross-${string.id}`} label={string.name} value={string.id} />
+                <Picker.Item 
+                  key={`cross-${string.id}`} 
+                  label={`${string.brand} ${string.model} ${string.type}`} 
+                  value={string.id} 
+                />
               ))}
             </Picker>
           </View>
@@ -181,7 +226,7 @@ const JobForm: React.FC<JobFormProps> = ({
               style={styles.input}
               keyboardType="numeric"
               value={formData.tension_main}
-              onChangeText={(value) => handleChange('tension_main', value)}
+              onChangeText={(value) => handleInputChange('tension_main', value)}
               placeholder="52"
             />
           </View>
@@ -192,7 +237,7 @@ const JobForm: React.FC<JobFormProps> = ({
               style={styles.input}
               keyboardType="numeric"
               value={formData.tension_cross}
-              onChangeText={(value) => handleChange('tension_cross', value)}
+              onChangeText={(value) => handleInputChange('tension_cross', value)}
               placeholder="50"
             />
           </View>
@@ -207,7 +252,7 @@ const JobForm: React.FC<JobFormProps> = ({
             style={[styles.input, styles.priceInput]}
             keyboardType="numeric"
             value={formData.price}
-            onChangeText={(value) => handleChange('price', value)}
+            onChangeText={(value) => handleInputChange('price', value)}
             placeholder="35.00"
           />
         </View>
@@ -220,7 +265,7 @@ const JobForm: React.FC<JobFormProps> = ({
           multiline
           numberOfLines={4}
           value={formData.notes}
-          onChangeText={(value) => handleChange('notes', value)}
+          onChangeText={(value) => handleInputChange('notes', value)}
           placeholder="Enter any special instructions, notes, or additional details here..."
           placeholderTextColor="#666"
           textAlignVertical="top"

@@ -1,28 +1,66 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
-import { supabase } from '../../../src/lib/supabase';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { useAuth } from '../../../src/contexts/AuthContext';
+import { FontAwesome } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
-  const router = useRouter();
+  const { signOut } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const handleSignOut = async () => {
     try {
-      // Just sign out - AuthRedirector will handle the navigation
-      await supabase.auth.signOut();
+      await signOut();
     } catch (error) {
-      console.error('Sign out error:', error);
+      console.error('Error signing out:', error);
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Settings</Text>
-      <TouchableOpacity 
-        onPress={handleSignOut}
-        style={styles.signOutButton}
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.contentContainer,
+          { paddingBottom: insets.bottom + 20 }
+        ]}
       >
-        <Text style={styles.buttonText}>Sign Out</Text>
-      </TouchableOpacity>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Settings</Text>
+        </View>
+
+        <View style={styles.section}>
+          <TouchableOpacity style={styles.menuItem}>
+            <FontAwesome name="user" size={20} color="#666" />
+            <Text style={styles.menuText}>Profile</Text>
+            <FontAwesome name="chevron-right" size={16} color="#666" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem}>
+            <FontAwesome name="bell" size={20} color="#666" />
+            <Text style={styles.menuText}>Notifications</Text>
+            <FontAwesome name="chevron-right" size={16} color="#666" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem}>
+            <FontAwesome name="lock" size={20} color="#666" />
+            <Text style={styles.menuText}>Privacy & Security</Text>
+            <FontAwesome name="chevron-right" size={16} color="#666" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem}>
+            <FontAwesome name="question-circle" size={20} color="#666" />
+            <Text style={styles.menuText}>Help & Support</Text>
+            <FontAwesome name="chevron-right" size={16} color="#666" />
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity 
+          style={styles.signOutButton}
+          onPress={handleSignOut}
+        >
+          <Text style={styles.signOutText}>Sign Out</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </View>
   );
 }
@@ -30,22 +68,49 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
     backgroundColor: '#fff',
   },
-  title: {
+  scrollView: {
+    flex: 1,
+  },
+  contentContainer: {
+    flexGrow: 1,
+  },
+  header: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  headerTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    color: '#333',
+    fontWeight: '600',
+    color: '#000',
+  },
+  section: {
+    marginTop: 20,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  menuText: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#000',
   },
   signOutButton: {
-    backgroundColor: '#FF3B30',
-    padding: 15,
+    marginTop: 20,
+    marginHorizontal: 16,
+    padding: 16,
+    backgroundColor: '#ff3b30',
     borderRadius: 8,
     alignItems: 'center',
   },
-  buttonText: {
+  signOutText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',

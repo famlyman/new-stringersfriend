@@ -26,8 +26,12 @@ export default function AuthLayout() {
       }
 
       // Don't redirect if we're going to registration with a selected role
-      if (pathname === '/register' && params.selectedRole) {
-        console.log("AuthLayout: Going to registration with selected role, no redirect needed");
+      if (pathname.startsWith('/register')) {
+        if (params.selectedRole) {
+          console.log("AuthLayout: Going to registration with selected role:", params.selectedRole);
+          return;
+        }
+        console.log("AuthLayout: Going to registration without role");
         return;
       }
 

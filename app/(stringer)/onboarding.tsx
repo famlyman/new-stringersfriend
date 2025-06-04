@@ -90,8 +90,8 @@ export default function StringerOnboardingScreen() {
         .from('stringers')
         .insert({
           id: session.user.id,
-          business_name: shopName,
-          phone: phoneNumber,
+          shop_name: shopName,
+          phone_number: phoneNumber,
           address: address,
           business_hours: businessHoursInput ? { text: businessHoursInput } : null,
           logo_url: logoUrl,

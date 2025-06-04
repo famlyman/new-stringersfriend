@@ -132,7 +132,13 @@ export default function EditJobScreen() {
         onSubmit={handleSubmit}
         isLoading={isSubmitting}
         submitButtonText="Save Changes"
-      />
+        clients={[]} racquets={[]} strings={[]} onAddClient={function (): void {
+          throw new Error('Function not implemented.');
+        } } onAddRacquet={function (): void {
+          throw new Error('Function not implemented.');
+        } } onAddString={function (): void {
+          throw new Error('Function not implemented.');
+        } }      />
     </View>
   );
 }
