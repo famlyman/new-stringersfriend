@@ -1,13 +1,14 @@
 import { supabase } from '../lib/supabase';
 import { Job, JobFormData, JobStatus } from '../types/job';
+import { useAuth } from '../contexts/AuthContext';
 
 export const createJob = async (jobData: JobFormData): Promise<{ data: Job | null; error: Error | null }> => {
   try {
     // Get the current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
-    if (userError || !user) {
-      throw new Error(userError?.message || 'User not authenticated');
+    if (sessionError || !session?.user) {
+      throw new Error(sessionError?.message || 'User not authenticated');
     }
 
     // Get client name
@@ -19,56 +20,70 @@ export const createJob = async (jobData: JobFormData): Promise<{ data: Job | nul
 
     if (clientError) throw clientError;
 
-    // Get racquet name
+    // Get racquet name with brand and model
     const { data: racquetData, error: racquetError } = await supabase
       .from('racquets')
-      .select('brand, model')
+      .select(`
+        id,
+        brand:brands!inner (
+          id,
+          name
+        ),
+        model:models!inner (
+          id,
+          name
+        )
+      `)
       .eq('id', jobData.racquet_id)
       .single();
 
     if (racquetError) throw racquetError;
 
-    // Get main string name
+    // Get main string details from string_inventory
     const { data: mainStringData, error: stringError } = await supabase
-      .from('strings')
-      .select('name')
+      .from('string_inventory')
+      .select('*')
       .eq('id', jobData.string_id)
       .single();
 
-    if (stringError) throw stringError;
+    if (stringError) {
+      console.error('Error fetching main string:', stringError);
+      throw new Error('Failed to fetch main string details');
+    }
 
-    // Get cross string name (if different)
-    let crossStringName = mainStringData.name;
+    // Get cross string details (if different)
+    let crossStringName = mainStringData?.string_name || 'Unknown';
     if (jobData.cross_string_id && jobData.cross_string_id !== jobData.string_id) {
       const { data: crossStringData, error: crossStringError } = await supabase
-        .from('strings')
-        .select('name')
+        .from('string_inventory')
+        .select('*')
         .eq('id', jobData.cross_string_id)
         .single();
 
-      if (crossStringError) throw crossStringError;
-      crossStringName = crossStringData.name;
+      if (crossStringError) {
+        console.error('Error fetching cross string:', crossStringError);
+        throw new Error('Failed to fetch cross string details');
+      }
+      crossStringName = crossStringData?.string_name || 'Unknown';
     }
 
     // Insert the job
     const { data, error } = await supabase
-      .from('jobs')
+      .from('stringing_jobs')
       .insert([
         {
-          user_id: user.id,
+          user_id: session.user.id,
+          stringer_id: session.user.id,
           client_id: jobData.client_id,
-          client_name: clientData.full_name,
           racquet_id: jobData.racquet_id,
-          racquet_name: `${racquetData.brand} ${racquetData.model}`,
           string_id: jobData.string_id,
-          string_name: mainStringData.name,
-          cross_string_id: jobData.cross_string_id || jobData.string_id,
-          cross_string_name: crossStringName,
-          tension_main: parseFloat(jobData.tension_main),
-          tension_cross: parseFloat(jobData.tension_cross),
-          price: parseFloat(jobData.price),
+          cross_string_id: jobData.cross_string_id,
+          tension_main: parseInt(jobData.tension_main),
+          tension_cross: parseInt(jobData.tension_cross),
+          status: 'pending',
           notes: jobData.notes || '',
-          status: 'pending' as JobStatus,
+          price: parseFloat(jobData.price),
+          created_at: new Date().toISOString()
         }
       ])
       .select()
@@ -100,7 +115,7 @@ export const getJobs = async (status?: JobStatus) => {
       .order('created_at', { ascending: false });
 
     if (status) {
-      query = query.eq('status', status);
+      query = query.eq('job_status', status);
     }
 
     const { data, error } = await query;
@@ -118,16 +133,11 @@ export const getJobs = async (status?: JobStatus) => {
 
 export const updateJobStatus = async (jobId: string, status: JobStatus) => {
   try {
-    const updates: Partial<Job> = { status };
+    const updates: Partial<Job> = { job_status: status };
     
-    // If marking as completed, set completed_at
+    // If marking as completed, set completed_date
     if (status === 'completed') {
-      updates.completed_at = new Date().toISOString();
-    }
-    
-    // If marking as picked up, set picked_up_at
-    if (status === 'picked_up') {
-      updates.picked_up_at = new Date().toISOString();
+      updates.completed_date = new Date().toISOString();
     }
 
     const { data, error } = await supabase

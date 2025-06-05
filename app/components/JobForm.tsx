@@ -1,36 +1,19 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
-import { JobFormData } from '../../src/types/job';
-import { createJob } from '../../src/services/jobService';
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
+import { supabase } from '../../src/lib/supabase';
+import { createJob } from '../../src/services/jobService';
+import { JobFormData } from '../../src/types/job';
+import { StringItem } from '../../src/types/string';
+import { Racquet } from '../../src/types/racquet';
+import SearchableDropdown from './SearchableDropdown';
 
 type Client = {
   id: string;
   full_name: string;
   email?: string;
   phone?: string;
-};
-
-type Racquet = {
-  id: string;
-  brand: string;
-  model: string;
-  head_size?: number;
-  weight?: number;
-  balance?: number;
-  string_pattern?: string;
-};
-
-type String = {
-  id: string;
-  brand: string;
-  model: string;
-  type: string;
-  gauge?: string;
-  color?: string;
-  price: number;
+  name?: string;
 };
 
 interface JobFormProps {
@@ -40,13 +23,13 @@ interface JobFormProps {
   submitButtonText: string;
   clients: Client[];
   racquets: Racquet[];
-  strings: String[];
+  strings: StringItem[];
   onAddClient: () => void;
   onAddRacquet: () => void;
   onAddString: () => void;
 }
 
-const JobForm: React.FC<JobFormProps> = ({
+export default function JobForm({
   initialData = {},
   onSubmit,
   isLoading,
@@ -56,189 +39,167 @@ const JobForm: React.FC<JobFormProps> = ({
   strings,
   onAddClient,
   onAddRacquet,
-  onAddString,
-}) => {
+  onAddString
+}: JobFormProps) {
   const [formData, setFormData] = useState<JobFormData>({
     client_id: initialData.client_id || '',
     racquet_id: initialData.racquet_id || '',
+    racquet_brand_id: initialData.racquet_brand_id || '',
     string_id: initialData.string_id || '',
     cross_string_id: initialData.cross_string_id || '',
-    tension_main: initialData.tension_main || '52',
-    tension_cross: initialData.tension_cross || '50',
+    tension_main: initialData.tension_main || '',
+    tension_cross: initialData.tension_cross || '',
     notes: initialData.notes || '',
-    price: initialData.price || '35',
+    price: initialData.price || ''
   });
 
-  const router = useRouter();
-
-  const handleSubmit = async () => {
-    try {
-      const { data, error } = await createJob(formData);
-      
-      if (error) {
-        throw error;
-      }
-      
-      if (data) {
-        Alert.alert(
-          'Success',
-          'Job created successfully!',
-          [
-            { 
-              text: 'OK', 
-              onPress: () => router.push('/jobs') 
-            }
-          ]
-        );
-        await onSubmit(formData);
-      }
-    } catch (error) {
-      console.error('Error submitting form:', error);
-      Alert.alert(
-        'Error',
-        error instanceof Error ? error.message : 'Failed to create job. Please try again.'
-      );
-      throw error; // Re-throw to let the parent component handle the error if needed
-    }
-  };
-
   const handleInputChange = (field: keyof JobFormData, value: string) => {
-    setFormData((prev: JobFormData) => ({
+    setFormData(prev => ({
       ...prev,
       [field]: value
     }));
   };
 
+  const handleSubmit = async () => {
+    try {
+      await onSubmit(formData);
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      Alert.alert('Error', 'Failed to submit form. Please try again.');
+    }
+  };
+
+  const stringItems = useMemo(() => {
+    if (!strings) return [];
+    return strings.map((string: StringItem) => ({
+      id: string.id,
+      label: `${string.brand} ${string.model}`,
+      brand: string.brand,
+      model: string.model,
+      string_name: string.string_name,
+      brand_id: string.brand_id,
+      model_id: string.model_id,
+      gauge: string.gauge,
+      color: string.color
+    }));
+  }, [strings]);
+
+  const racquetItems = useMemo(() => {
+    if (!racquets) return [];
+    return racquets.map((racquet: Racquet) => ({
+      id: racquet.id,
+      label: `${racquet.brand} ${racquet.model}`,
+      brand: racquet.brand,
+      model: racquet.model,
+      brand_id: racquet.brand_id,
+      model_id: racquet.model_id
+    }));
+  }, [racquets]);
+
+  const clientItems = useMemo(() => {
+    if (!clients) return [];
+    return clients.map((client: Client) => ({
+      id: client.id,
+      label: client.full_name,
+      name: client.full_name
+    }));
+  }, [clients]);
+
+  const handleRacquetChange = (value: string) => {
+    const selectedRacquet = racquets.find(r => r.id === value);
+    if (selectedRacquet && selectedRacquet.brand_id) {
+      handleInputChange('racquet_id', value);
+      handleInputChange('racquet_brand_id', selectedRacquet.brand_id);
+    }
+  };
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Client</Text>
-          <TouchableOpacity 
-            onPress={onAddClient}
-            style={styles.addButton}
-          >
-            <Ionicons name="add-circle" size={20} color="#007AFF" />
-            <Text style={styles.addButtonText}>Add Client</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={formData.client_id}
-            onValueChange={(value: string) => handleInputChange('client_id', value)}
-            style={styles.picker}
-          >
-            <Picker.Item label="Select a client..." value="" />
-            {clients.map(client => (
-              <Picker.Item key={client.id} label={client.full_name} value={client.id} />
-            ))}
-          </Picker>
-        </View>
+        <Text style={styles.sectionTitle}>Client</Text>
+        <SearchableDropdown
+          label="Client"
+          items={clientItems}
+          value={formData.client_id}
+          onChange={(value: string) => handleInputChange('client_id', value)}
+          searchFields={['label']}
+          placeholder="Select a client..."
+          required
+        />
+        <TouchableOpacity style={styles.addButton} onPress={onAddClient}>
+          <Text style={styles.addButtonText}>+ Add New Client</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Racquet</Text>
-          <TouchableOpacity 
-            onPress={onAddRacquet}
-            style={styles.addButton}
-          >
-            <Ionicons name="add-circle" size={20} color="#007AFF" />
-            <Text style={styles.addButtonText}>Add Racquet</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={formData.racquet_id}
-            onValueChange={(value: string) => handleInputChange('racquet_id', value)}
-            style={styles.picker}
-            enabled={!!formData.client_id}
-          >
-            <Picker.Item label={
-              formData.client_id 
-                ? "Select a racquet..." 
-                : "Select a client first"
-            } value="" />
-            {racquets.map(racquet => (
-              <Picker.Item 
-                key={racquet.id} 
-                label={`${racquet.brand} ${racquet.model}`} 
-                value={racquet.id} 
-              />
-            ))}
-          </Picker>
-        </View>
+        <Text style={styles.sectionTitle}>Racquet</Text>
+        <SearchableDropdown
+          label="Racquet"
+          items={racquetItems}
+          value={formData.racquet_id}
+          onChange={handleRacquetChange}
+          searchFields={['label', 'brand', 'model']}
+          placeholder="Select a racquet..."
+          required
+        />
+        <TouchableOpacity style={styles.addButton} onPress={onAddRacquet}>
+          <Text style={styles.addButtonText}>+ Add New Racquet</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>String & Tension</Text>
-          <TouchableOpacity 
-            onPress={onAddString}
-            style={styles.addButton}
-          >
-            <Ionicons name="add-circle" size={20} color="#007AFF" />
-            <Text style={styles.addButtonText}>Add String</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.stringsContainer}>
-          <View style={[styles.pickerContainer, styles.stringPicker]}>
-            <Text style={styles.stringLabel}>Mains:</Text>
-            <Picker
-              selectedValue={formData.string_id}
-              onValueChange={(value: string) => handleInputChange('string_id', value)}
-              style={styles.picker}
-            >
-              <Picker.Item label="Select mains..." value="" />
-              {strings.map(string => (
-                <Picker.Item 
-                  key={string.id} 
-                  label={`${string.brand} ${string.model} ${string.type}`} 
-                  value={string.id} 
-                />
-              ))}
-            </Picker>
-          </View>
-          
-          <View style={[styles.pickerContainer, styles.stringPicker]}>
-            <Text style={styles.stringLabel}>Crosses:</Text>
-            <Picker
-              selectedValue={formData.cross_string_id}
-              onValueChange={(value: string) => handleInputChange('cross_string_id', value || '')}
-              style={styles.picker}
-            >
-              <Picker.Item label="Select crosses..." value="" />
-              {strings.map(string => (
-                <Picker.Item 
-                  key={`cross-${string.id}`} 
-                  label={`${string.brand} ${string.model} ${string.type}`} 
-                  value={string.id} 
-                />
-              ))}
-            </Picker>
-          </View>
+        <Text style={styles.sectionTitle}>Strings</Text>
+        <View style={styles.stringSection}>
+          <Text style={styles.stringLabel}>Mains:</Text>
+          <SearchableDropdown
+            label="Mains"
+            items={stringItems}
+            value={formData.string_id}
+            onChange={(value: string) => handleInputChange('string_id', value)}
+            searchFields={['label', 'brand', 'model']}
+            placeholder="Select string"
+            required
+          />
         </View>
 
-        <View style={styles.tensionContainer}>
-          <View style={styles.tensionInputContainer}>
-            <Text style={styles.tensionLabel}>Mains (lbs)</Text>
+        <View style={styles.stringSection}>
+          <Text style={styles.stringLabel}>Crosses:</Text>
+          <SearchableDropdown
+            label="Crosses"
+            items={stringItems}
+            value={formData.cross_string_id || ''}
+            onChange={(value: string) => handleInputChange('cross_string_id', value)}
+            searchFields={['label', 'brand', 'model']}
+            placeholder="Select string (optional)"
+          />
+        </View>
+
+        <TouchableOpacity style={styles.addButton} onPress={onAddString}>
+          <Text style={styles.addButtonText}>+ Add New String</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Tension</Text>
+        <View style={styles.tensionSection}>
+          <View style={styles.tensionInput}>
+            <Text style={styles.tensionLabel}>Mains:</Text>
             <TextInput
               style={styles.input}
-              keyboardType="numeric"
               value={formData.tension_main}
               onChangeText={(value) => handleInputChange('tension_main', value)}
-              placeholder="52"
+              placeholder="Enter tension"
+              keyboardType="numeric"
             />
           </View>
-          
-          <View style={styles.tensionInputContainer}>
-            <Text style={styles.tensionLabel}>Crosses (lbs)</Text>
+          <View style={styles.tensionInput}>
+            <Text style={styles.tensionLabel}>Crosses:</Text>
             <TextInput
               style={styles.input}
-              keyboardType="numeric"
               value={formData.tension_cross}
               onChangeText={(value) => handleInputChange('tension_cross', value)}
-              placeholder="50"
+              placeholder="Enter tension"
+              keyboardType="numeric"
             />
           </View>
         </View>
@@ -246,172 +207,103 @@ const JobForm: React.FC<JobFormProps> = ({
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Price</Text>
-        <View style={styles.priceContainer}>
-          <Text style={styles.currencySymbol}>$</Text>
-          <TextInput
-            style={[styles.input, styles.priceInput]}
-            keyboardType="numeric"
-            value={formData.price}
-            onChangeText={(value) => handleInputChange('price', value)}
-            placeholder="35.00"
-          />
-        </View>
+        <TextInput
+          style={styles.input}
+          value={formData.price}
+          onChangeText={(value) => handleInputChange('price', value)}
+          placeholder="Enter price"
+          keyboardType="numeric"
+        />
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Notes</Text>
         <TextInput
           style={[styles.input, styles.notesInput]}
-          multiline
-          numberOfLines={4}
           value={formData.notes}
           onChangeText={(value) => handleInputChange('notes', value)}
-          placeholder="Enter any special instructions, notes, or additional details here..."
-          placeholderTextColor="#666"
-          textAlignVertical="top"
+          placeholder="Enter any additional notes"
+          multiline
+          numberOfLines={4}
         />
       </View>
 
-      <TouchableOpacity 
-        style={[styles.submitButton, isLoading && styles.submitButtonDisabled]} 
+      <TouchableOpacity
+        style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
         onPress={handleSubmit}
-        disabled={isLoading || !formData.client_id || !formData.racquet_id || !formData.string_id || !formData.cross_string_id}
+        disabled={isLoading}
       >
-        {isLoading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.submitButtonText}>{submitButtonText}</Text>
-        )}
+        <Text style={styles.submitButtonText}>
+          {isLoading ? 'Submitting...' : submitButtonText}
+        </Text>
       </TouchableOpacity>
     </ScrollView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: '#f8f9fa',
   },
   section: {
     marginBottom: 24,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1a1a1a',
-  },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
-  },
-  addButtonText: {
-    marginLeft: 4,
-    color: '#007AFF',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    marginBottom: 16,
-    overflow: 'hidden',
-  },
-  picker: {
-    width: '100%',
-    height: 65,
-  },
-  stringsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
+    fontSize: 18,
+    fontWeight: 'bold',
     marginBottom: 16,
   },
-  stringPicker: {
-    width: '48%',
-    marginBottom: 8,
+  stringSection: {
+    marginBottom: 16,
   },
   stringLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
-    fontWeight: '500',
+    fontSize: 16,
+    marginBottom: 8,
   },
-  tensionContainer: {
+  tensionSection: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 8,
   },
-  tensionInputContainer: {
-    width: '48%',
+  tensionInput: {
+    flex: 1,
+    marginRight: 16,
   },
   tensionLabel: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 16,
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: '#ddd',
     borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    padding: 12,
     fontSize: 16,
-    color: '#1a1a1a',
-    backgroundColor: '#fff',
-  },
-  priceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  currencySymbol: {
-    position: 'absolute',
-    left: 16,
-    fontSize: 16,
-    color: '#666',
-    zIndex: 1,
-  },
-  priceInput: {
-    paddingLeft: 36,
   },
   notesInput: {
-    minHeight: 100,
+    height: 100,
     textAlignVertical: 'top',
+  },
+  addButton: {
+    marginTop: 8,
+  },
+  addButtonText: {
+    color: '#007AFF',
+    fontSize: 16,
   },
   submitButton: {
     backgroundColor: '#007AFF',
-    borderRadius: 12,
     padding: 16,
+    borderRadius: 8,
     alignItems: 'center',
-    marginBottom: 24,
+    marginTop: 24,
   },
   submitButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   submitButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: 'bold',
   },
 });
-
-export default JobForm;

@@ -18,13 +18,19 @@ type StringInventory = {
   id: string;
   string_name: string;
   brand: string;
+  type?: string;
   gauge: string;
   color: string;
   length_feet: number;
   stock_quantity: number;
   min_stock_level: number;
   cost_per_set: number;
+  user_id: string;
   created_at: string;
+  updated_at: string;
+  brand_info: {
+    string_brand: string;
+  };
 };
 
 export default function InventoryScreen() {
@@ -42,13 +48,12 @@ export default function InventoryScreen() {
 
     try {
       const { data, error: fetchError } = await supabase
-        .from('string_inventory')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .order('brand', { ascending: true })
-        .order('string_name', { ascending: true });
+        .rpc('get_inventory_with_brands', {
+          user_id: session.user.id
+        });
 
       if (fetchError) throw fetchError;
+      console.log('Inventory data:', data);
       setInventory(data || []);
       setError(null);
     } catch (err) {
@@ -71,31 +76,50 @@ export default function InventoryScreen() {
     fetchInventory();
   }, [fetchInventory]);
 
-  const renderItem = ({ item }: { item: StringInventory }) => (
-    <View style={styles.inventoryItem}>
-      <View style={styles.itemHeader}>
-        <Text style={styles.itemName}>
-          {item.brand} {item.string_name}
-        </Text>
-        <View style={[
-          styles.stockBadge,
-          item.stock_quantity <= item.min_stock_level && styles.lowStockBadge
-        ]}>
-          <Text style={styles.stockText}>
-            {item.stock_quantity} {item.stock_quantity === 1 ? 'set' : 'sets'}
-          </Text>
+  const renderItem = ({ item }: { item: any }) => {
+    console.log('Rendering item:', item);
+    const truncatedModel = item.model_name ? 
+      (item.model_name.length > 7 ? item.model_name.substring(0, 7) + '...' : item.model_name) 
+      : item.model_id;
+    
+    return (
+      <View style={styles.inventoryItem}>
+        <View style={styles.itemHeader}>
+          <View>
+            <Text style={styles.itemTitle}>
+              {item.brand_name} {truncatedModel}
+            </Text>
+            <Text style={styles.itemSubtitle}>{item.gauge} - {item.color}</Text>
+          </View>
+          <View style={styles.headerActions}>
+            <View style={[
+              styles.stockBadge,
+              item.stock_quantity <= item.min_stock_level && styles.lowStockBadge
+            ]}>
+              <Text style={styles.stockText}>
+                {item.stock_quantity} {item.stock_quantity === 1 ? 'set' : 'sets'}
+              </Text>
+            </View>
+            <Link href={`/(stringer)/inventory/${item.id}/edit`} asChild>
+              <TouchableOpacity style={styles.editButton}>
+                <Ionicons name="pencil" size={20} color="#007AFF" />
+              </TouchableOpacity>
+            </Link>
+          </View>
+        </View>
+        <View style={styles.itemDetails}>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Length:</Text>
+            <Text style={styles.detailValue}>{item.length_feet} ft</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Cost:</Text>
+            <Text style={styles.detailValue}>${item.cost_per_set?.toFixed(2) || '0.00'}</Text>
+          </View>
         </View>
       </View>
-      <View style={styles.itemDetails}>
-        <Text style={styles.detailText}>Gauge: {item.gauge}mm</Text>
-        <Text style={styles.detailText}>Length: {item.length_feet}ft</Text>
-        <Text style={styles.detailText}>Min. Stock: {item.min_stock_level}</Text>
-      </View>
-      <Text style={styles.priceText}>
-        ${item.cost_per_set?.toFixed(2) || '0.00'} per set
-      </Text>
-    </View>
-  );
+    );
+  };
 
   if (loading && !refreshing) {
     return (
@@ -240,42 +264,37 @@ const styles = StyleSheet.create({
   itemHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    alignItems: 'flex-start',
+    marginBottom: 8,
   },
-  itemName: {
+  itemTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
     flex: 1,
     marginRight: 12,
   },
-  stockBadge: {
-    backgroundColor: '#e3f2fd',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  lowStockBadge: {
-    backgroundColor: '#ffebee',
-  },
-  stockText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1976d2',
+  itemSubtitle: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
   },
   itemDetails: {
     marginBottom: 12,
   },
-  detailText: {
+  detailLabel: {
     fontSize: 14,
+    fontWeight: '600',
     color: '#666',
     marginBottom: 4,
   },
-  priceText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#2e7d32',
+  detailValue: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 4,
+  },
+  lowStock: {
+    backgroundColor: '#ffebee',
   },
   emptyState: {
     flex: 1,
@@ -321,5 +340,35 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     fontSize: 14,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  editButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#f0f7ff',
+  },
+  stockBadge: {
+    backgroundColor: '#e3f2fd',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  lowStockBadge: {
+    backgroundColor: '#ffebee',
+  },
+  stockText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1976d2',
   },
 });

@@ -1,20 +1,10 @@
-import { Stack, useRouter } from 'expo-router';
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
-  ScrollView, 
-  Alert, 
-  ActivityIndicator,
-  Modal
-} from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Alert, TextInput, Text, TouchableOpacity } from 'react-native';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../../../src/contexts/AuthContext';
-import { supabase } from '../../../src/lib/supabase';
-import { SearchableDropdown } from '../../../app/components/SearchableDropdown';
+import { useAuth } from '../../../../src/contexts/AuthContext';
+import { supabase } from '../../../../src/lib/supabase';
+import { SearchableDropdown } from '../../../components/SearchableDropdown';
 
 type FormData = {
   brand: string;
@@ -27,10 +17,12 @@ type FormData = {
   cost_per_set: string;
 };
 
-export default function NewInventoryScreen() {
+export default function EditInventoryScreen() {
   const router = useRouter();
+  const { id } = useLocalSearchParams();
   const { session } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [brands, setBrands] = useState<Array<{ id: string; label: string }>>([]);
   const [models, setModels] = useState<Array<{ id: string; label: string }>>([]);
   const [formData, setFormData] = useState<FormData>({
@@ -44,35 +36,60 @@ export default function NewInventoryScreen() {
     cost_per_set: '',
   });
 
-  const [loading, setLoading] = useState(false);
-
   useEffect(() => {
+    fetchInventoryItem();
     fetchBrands();
   }, []);
 
-  useEffect(() => {
-    if (formData.brand) {
-      fetchModels(formData.brand);
-    } else {
-      setModels([]);
+  const fetchInventoryItem = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('string_inventory')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setFormData({
+          brand: data.brand,
+          model: data.model,
+          gauge: data.gauge,
+          color: data.color || '',
+          length_feet: data.length_feet.toString(),
+          stock_quantity: data.stock_quantity.toString(),
+          min_stock_level: data.min_stock_level.toString(),
+          cost_per_set: data.cost_per_set.toString(),
+        });
+        fetchModels(data.brand);
+      }
+    } catch (error) {
+      console.error('Error fetching inventory item:', error);
+      Alert.alert('Error', 'Failed to load inventory item');
+    } finally {
+      setLoading(false);
     }
-  }, [formData.brand]);
+  };
 
   const fetchBrands = async () => {
     try {
       const { data, error } = await supabase
         .from('string_brand')
-        .select('string_id, string_brand')
-        .order('string_brand');
+        .select('string_id,string_brand')
+        .order('string_brand', { ascending: true });
 
       if (error) throw error;
 
-      setBrands(data.map(brand => ({
-        id: brand.string_id.toString(),
-        label: brand.string_brand
-      })));
+      setBrands(
+        data.map((item) => ({
+          id: item.string_id.toString(),
+          label: item.string_brand,
+        }))
+      );
     } catch (error) {
       console.error('Error fetching brands:', error);
+      setBrands([]);
     }
   };
 
@@ -98,19 +115,13 @@ export default function NewInventoryScreen() {
     }
   };
 
-  const handleInputChange = (field: keyof FormData, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
   const handleBrandChange = (value: string) => {
-    setFormData(prev => ({ ...prev, brand: value, model: '' }));
+    setFormData((prev) => ({ ...prev, brand: value, model: '' }));
+    fetchModels(value);
   };
 
   const handleModelChange = (value: string) => {
-    setFormData(prev => ({ ...prev, model: value }));
+    setFormData((prev) => ({ ...prev, model: value }));
   };
 
   const handleSubmit = async () => {
@@ -119,12 +130,12 @@ export default function NewInventoryScreen() {
       return;
     }
 
-    setLoading(true);
+    setSubmitting(true);
 
     try {
       const { error } = await supabase
         .from('string_inventory')
-        .insert({
+        .update({
           brand: formData.brand,
           model: formData.model,
           gauge: formData.gauge,
@@ -133,33 +144,42 @@ export default function NewInventoryScreen() {
           stock_quantity: parseInt(formData.stock_quantity),
           min_stock_level: parseInt(formData.min_stock_level),
           cost_per_set: parseFloat(formData.cost_per_set),
-          user_id: session?.user?.id,
-        });
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id);
 
       if (error) throw error;
 
       router.replace('/(stringer)/(tabs)/inventory');
     } catch (error) {
-      console.error('Error adding inventory:', error);
-      Alert.alert('Error', 'Failed to add inventory item');
+      console.error('Error updating inventory:', error);
+      Alert.alert('Error', 'Failed to update inventory item');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
+
   return (
-    <ScrollView style={styles.container}>
-      <Stack.Screen 
+    <View style={styles.container}>
+      <Stack.Screen
         options={{
-          title: 'Add New String',
+          title: 'Edit String',
           headerLeft: () => (
-            <TouchableOpacity 
+            <Ionicons
+              name="close"
+              size={24}
+              color="#FF3B30"
               onPress={() => router.back()}
-              style={{ marginLeft: 8 }}
-              disabled={isLoading}
-            >
-              <Ionicons name="arrow-back" size={24} color="#007AFF" />
-            </TouchableOpacity>
+              style={styles.closeButton}
+            />
           ),
         }}
       />
@@ -167,7 +187,6 @@ export default function NewInventoryScreen() {
       <View style={styles.form}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>String Details</Text>
-          
           <View style={styles.row}>
             <View style={styles.column}>
               <Text style={styles.label}>Brand</Text>
@@ -200,7 +219,7 @@ export default function NewInventoryScreen() {
               <TextInput
                 style={styles.input}
                 value={formData.gauge}
-                onChangeText={(text) => handleInputChange('gauge', text)}
+                onChangeText={(text) => setFormData((prev) => ({ ...prev, gauge: text }))}
                 placeholder="e.g., 1.25"
                 keyboardType="decimal-pad"
               />
@@ -210,8 +229,8 @@ export default function NewInventoryScreen() {
               <TextInput
                 style={styles.input}
                 value={formData.color}
-                onChangeText={(text) => handleInputChange('color', text)}
-                placeholder="e.g., Natural"
+                onChangeText={(text) => setFormData((prev) => ({ ...prev, color: text }))}
+                placeholder="e.g., Black"
               />
             </View>
           </View>
@@ -222,7 +241,8 @@ export default function NewInventoryScreen() {
               <TextInput
                 style={styles.input}
                 value={formData.length_feet}
-                onChangeText={(text) => handleInputChange('length_feet', text)}
+                onChangeText={(text) => setFormData((prev) => ({ ...prev, length_feet: text }))}
+                placeholder="e.g., 660"
                 keyboardType="numeric"
               />
             </View>
@@ -231,8 +251,8 @@ export default function NewInventoryScreen() {
               <TextInput
                 style={styles.input}
                 value={formData.stock_quantity}
-                onChangeText={(text) => handleInputChange('stock_quantity', text)}
-                placeholder="0"
+                onChangeText={(text) => setFormData((prev) => ({ ...prev, stock_quantity: text }))}
+                placeholder="e.g., 10"
                 keyboardType="numeric"
               />
             </View>
@@ -244,7 +264,8 @@ export default function NewInventoryScreen() {
               <TextInput
                 style={styles.input}
                 value={formData.min_stock_level}
-                onChangeText={(text) => handleInputChange('min_stock_level', text)}
+                onChangeText={(text) => setFormData((prev) => ({ ...prev, min_stock_level: text }))}
+                placeholder="e.g., 1"
                 keyboardType="numeric"
               />
             </View>
@@ -253,25 +274,25 @@ export default function NewInventoryScreen() {
               <TextInput
                 style={styles.input}
                 value={formData.cost_per_set}
-                onChangeText={(text) => handleInputChange('cost_per_set', text)}
-                placeholder="0.00"
+                onChangeText={(text) => setFormData((prev) => ({ ...prev, cost_per_set: text }))}
+                placeholder="e.g., 12.99"
                 keyboardType="decimal-pad"
               />
             </View>
           </View>
         </View>
 
-        <TouchableOpacity 
-          style={[styles.button, loading && styles.buttonDisabled]} 
+        <TouchableOpacity
+          style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
           onPress={handleSubmit}
-          disabled={loading}
+          disabled={submitting}
         >
-          <Text style={styles.buttonText}>
-            {loading ? 'Adding...' : 'Add to Inventory'}
+          <Text style={styles.submitButtonText}>
+            {submitting ? 'Updating...' : 'Update String'}
           </Text>
         </TouchableOpacity>
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
@@ -280,33 +301,40 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  scrollView: {
+  loadingContainer: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  closeButton: {
+    marginLeft: 16,
   },
   form: {
+    flex: 1,
     padding: 16,
   },
   section: {
-    backgroundColor: 'white',
+    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 2,
+    elevation: 2,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    marginBottom: 16,
     color: '#333',
+    marginBottom: 16,
   },
   row: {
     flexDirection: 'row',
-    marginBottom: 16,
     gap: 16,
+    marginBottom: 16,
   },
   column: {
     flex: 1,
@@ -314,30 +342,31 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '500',
-    marginBottom: 8,
     color: '#666',
+    marginBottom: 8,
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
+    backgroundColor: '#f8f9fa',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    backgroundColor: 'white',
+    color: '#333',
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
-  button: {
+  submitButton: {
     backgroundColor: '#007AFF',
+    borderRadius: 8,
     padding: 16,
-    borderRadius: 12,
     alignItems: 'center',
     marginTop: 16,
   },
-  buttonDisabled: {
-    backgroundColor: '#ccc',
+  submitButtonDisabled: {
+    opacity: 0.7,
   },
-  buttonText: {
-    color: 'white',
+  submitButtonText: {
+    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
-});
+}); 

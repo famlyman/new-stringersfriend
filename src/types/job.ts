@@ -4,25 +4,20 @@ export interface Job {
   id: string;
   created_at: string;
   updated_at: string;
-  user_id: string;
   client_id: string;
-  client_name: string;
   racquet_id: string;
-  racquet_name: string;
-  string_id: string;
-  string_name: string;
-  tension_main: number;
-  tension_cross: number;
-  status: JobStatus;
-  price: number;
-  notes?: string;
-  completed_at?: string;
-  picked_up_at?: string;
+  job_type: string;
+  job_status: JobStatus;
+  job_notes?: string;
+  due_date?: string;
+  completed_date?: string;
+  stringer_id: string;
 }
 
 export interface JobFormData {
   client_id: string;
   racquet_id: string;
+  racquet_brand_id: string;
   string_id: string;
   cross_string_id?: string;  // Made optional with '?'
   tension_main: string;

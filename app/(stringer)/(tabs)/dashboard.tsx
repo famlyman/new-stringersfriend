@@ -40,16 +40,20 @@ export default function DashboardScreen() {
         const { count: totalClients } = await supabase
           .from('clients')
           .select('*', { count: 'exact', head: true })
-          .eq('stringer_id', user.id);
+          .eq('user_id', user.id);
         
         // Fetch string inventory
-        const { data: inventory } = await supabase
-          .from('inventory')
-          .select('quantity')
-          .eq('stringer_id', user.id)
-          .eq('type', 'string');
+        const { data: inventory, error: inventoryError } = await supabase
+          .from('string_inventory')
+          .select('stock_quantity')
+          .eq('user_id', user.id);
         
-        const stringStock = inventory?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
+        if (inventoryError) {
+          console.error('Error fetching inventory:', inventoryError);
+          throw new Error('Failed to load inventory data');
+        }
+        
+        const stringStock = inventory?.reduce((sum, item) => sum + (item.stock_quantity || 0), 0) || 0;
         
         setStats({
           activeJobs: activeJobs || 0,

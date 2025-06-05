@@ -1,11 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React, { useState, useEffect } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View, ScrollView, TouchableOpacity, Text } from 'react-native';
 import JobForm from '../../../components/JobForm';
 import { JobFormData } from '../../../../src/types/job';
 import { useAuth } from '../../../../src/contexts/AuthContext';
 import { supabase } from '../../../../src/lib/supabase';
+import { Racquet } from '../../../../src/types/racquet';
+import { StringItem } from '../../../../src/types/string';
 
 type Client = {
   id: string;
@@ -14,172 +16,236 @@ type Client = {
   phone?: string;
 };
 
-type Racquet = {
+type RacquetResponse = {
   id: string;
-  brand: string;
-  model: string;
-  head_size?: number;
-  weight?: number;
-  balance?: number;
-  string_pattern?: string;
-};
-
-type String = {
-  id: string;
-  brand: string;
-  model: string;
-  type: string;
-  gauge?: string;
-  color?: string;
-  price: number;
+  brand: {
+    id: string;
+    name: string;
+  };
+  model: {
+    id: string;
+    name: string;
+  };
 };
 
 export default function NewJobScreen() {
   const router = useRouter();
   const { session } = useAuth();
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
   const [racquets, setRacquets] = useState<Racquet[]>([]);
-  const [strings, setStrings] = useState<String[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [strings, setStrings] = useState<StringItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState<JobFormData>({
+    client_id: '',
+    racquet_id: '',
+    racquet_brand_id: '',
+    string_id: '',
+    tension_main: '52',
+    tension_cross: '50',
+    price: '35',
+    notes: ''
+  });
 
   useEffect(() => {
-    fetchData();
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        await Promise.all([
+          fetchClients(),
+          fetchRacquets(),
+          fetchStrings()
+        ]);
+      } catch (error) {
+        console.error('Error loading data:', error);
+        Alert.alert('Error', 'Failed to load data. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
   }, []);
 
-  const fetchData = async () => {
+  const fetchClients = async () => {
     try {
-      setLoading(true);
-      await Promise.all([
-        fetchClients(),
-        fetchRacquets(),
-        fetchStrings(),
-      ]);
-    } catch (err) {
-      console.error('Error fetching data:', err);
-      Alert.alert('Error', 'Failed to load data. Please try again.');
-    } finally {
-      setLoading(false);
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .order('full_name');
+      
+      if (error) throw error;
+      console.log('Fetched clients:', data); // Debug log
+      setClients(data || []);
+    } catch (error) {
+      console.error('Error fetching clients:', error);
+      throw error;
     }
   };
 
-  const fetchClients = async () => {
-    const { data, error } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('user_id', session?.user?.id)
-      .order('full_name');
-
-    if (error) throw error;
-    setClients(data || []);
-  };
-
   const fetchRacquets = async () => {
-    const { data, error } = await supabase
-      .from('racquets')
-      .select('*')
-      .order('brand, model');
+    try {
+      console.log('Fetching racquets...');
+      const { data: racquets, error } = await supabase
+        .from('racquets')
+        .select(`
+          id,
+          brand:brands!inner (
+            id,
+            name
+          ),
+          model:models!inner (
+            id,
+            name
+          )
+        `)
+        .order('id', { ascending: true });
 
-    if (error) throw error;
-    setRacquets(data || []);
+      if (error) {
+        console.error('Error fetching racquets:', error);
+        throw error;
+      }
+
+      console.log('Raw racquet data:', racquets);
+
+      // Transform the data to match the Racquet type
+      const transformedRacquets = racquets.map(racquet => {
+        // Handle both array and single object responses
+        const brand = Array.isArray(racquet.brand) ? racquet.brand[0] : racquet.brand;
+        const model = Array.isArray(racquet.model) ? racquet.model[0] : racquet.model;
+
+        return {
+          id: racquet.id.toString(),
+          brand: brand?.name || '',
+          model: model?.name || '',
+          brand_id: brand?.id?.toString() || '',
+          model_id: model?.id?.toString() || '',
+          head_size: undefined,
+          weight_grams: undefined,
+          balance_point: undefined,
+          string_pattern: undefined
+        };
+      });
+
+      console.log('Transformed racquets:', transformedRacquets);
+      setRacquets(transformedRacquets);
+    } catch (error) {
+      console.error('Error in fetchRacquets:', error);
+      throw error;
+    }
   };
 
   const fetchStrings = async () => {
-    const { data, error } = await supabase
-      .from('strings')
-      .select('*')
-      .eq('is_active', true)
-      .order('brand, model');
+    try {
+      console.log('Fetching strings...');
+      const { data: strings, error } = await supabase
+        .from('string_inventory')
+        .select(`
+          id,
+          string_name,
+          brand:brands!inner (
+            id,
+            name
+          ),
+          model:models!inner (
+            id,
+            name
+          )
+        `)
+        .order('string_name', { ascending: true });
 
-    if (error) throw error;
-    setStrings(data || []);
+      if (error) {
+        console.error('Error fetching strings:', error);
+        throw error;
+      }
+
+      console.log('Raw string data:', strings);
+
+      // Transform the data to match the StringItem type
+      const transformedStrings = strings.map(string => {
+        // Handle both array and single object responses
+        const brand = Array.isArray(string.brand) ? string.brand[0] : string.brand;
+        const model = Array.isArray(string.model) ? string.model[0] : string.model;
+
+        return {
+          id: string.id.toString(),
+          string_name: string.string_name,
+          brand: brand?.name || '',
+          model: model?.name || '',
+          brand_id: brand?.id?.toString() || '',
+          model_id: model?.id?.toString() || '',
+          gauge: '',
+          color: '',
+          price: 0,
+          cost_per_set: undefined
+        };
+      });
+
+      console.log('Transformed strings:', transformedStrings);
+      setStrings(transformedStrings);
+    } catch (error) {
+      console.error('Error in fetchStrings:', error);
+      throw error;
+    }
   };
 
   const handleSubmit = async (data: JobFormData) => {
-    setIsSubmitting(true);
     try {
+      setIsLoading(true);
       const { error } = await supabase
         .from('jobs')
-        .insert([
-          {
-            ...data,
-            stringer_id: session?.user?.id,
-            status: 'pending',
-            created_at: new Date().toISOString(),
-          },
-        ]);
+        .insert([{
+          ...data,
+          user_id: session?.user?.id
+        }]);
 
       if (error) throw error;
-      
-      Alert.alert(
-        'Job Created',
-        'The stringing job has been created successfully.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              router.replace('/(stringer)/(tabs)/jobs');
-            },
-          },
-        ]
-      );
+      router.back();
     } catch (error) {
       console.error('Error creating job:', error);
       Alert.alert('Error', 'Failed to create job. Please try again.');
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
   const handleAddClient = () => {
-    router.push('/(stringer)/clients/new');
+    router.push('/clients/new');
   };
 
   const handleAddRacquet = () => {
-    router.push('/(stringer)/racquets/new');
+    router.push('/racquets/new');
   };
 
   const handleAddString = () => {
-    router.push('/(stringer)/strings/new');
+    router.push('/inventory/new');
   };
 
   return (
     <View style={styles.container}>
-      <Stack.Screen 
-        options={{
-          title: 'New Stringing Job',
-          headerLeft: () => (
-            <Ionicons 
-              name="close" 
-              size={24} 
-              color="#FF3B30" 
-              onPress={() => router.back()}
-              style={styles.closeButton}
-            />
-          ),
-        }} 
-      />
-      
-      <JobForm
-        onSubmit={handleSubmit}
-        isLoading={isSubmitting}
-        submitButtonText="Create Job"
-        initialData={{
-          client_id: '',
-          racquet_id: '',
-          string_id: '',
-          tension_main: '',
-          tension_cross: '',
-          price: '',
-          notes: ''
-        }}
-        clients={clients}
-        racquets={racquets}
-        strings={strings}
-        onAddClient={handleAddClient}
-        onAddRacquet={handleAddRacquet}
-        onAddString={handleAddString}
-      />
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        <Stack.Screen 
+          options={{
+            title: 'New Job',
+            headerLeft: () => (
+              <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color="#000" />
+              </TouchableOpacity>
+            ),
+          }}
+        />
+        <JobForm
+          initialData={formData}
+          onSubmit={handleSubmit}
+          isLoading={isLoading}
+          submitButtonText="Create Job"
+          clients={clients}
+          racquets={racquets}
+          strings={strings}
+          onAddClient={handleAddClient}
+          onAddRacquet={handleAddRacquet}
+          onAddString={handleAddString}
+        />
+      </ScrollView>
     </View>
   );
 }
@@ -187,9 +253,16 @@ export default function NewJobScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#fff',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 100,
   },
   closeButton: {
-    marginLeft: 16,
-  },
+    padding: 8,
+  }
 });
