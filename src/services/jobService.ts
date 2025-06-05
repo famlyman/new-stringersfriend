@@ -20,24 +20,34 @@ export const createJob = async (jobData: JobFormData): Promise<{ data: Job | nul
 
     if (clientError) throw clientError;
 
-    // Get racquet name with brand and model
+    // Get racquet details with direct brand and model IDs
     const { data: racquetData, error: racquetError } = await supabase
       .from('racquets')
-      .select(`
-        id,
-        brand:brands!inner (
-          id,
-          name
-        ),
-        model:models!inner (
-          id,
-          name
-        )
-      `)
+      .select('*')
       .eq('id', jobData.racquet_id)
       .single();
 
-    if (racquetError) throw racquetError;
+    if (racquetError) {
+      console.error('Error fetching racquet:', racquetError);
+      throw new Error('Failed to fetch racquet details');
+    }
+
+    // Get brand and model names separately since they're just IDs in the racquet table
+    const { data: brandData } = await supabase
+      .from('brands')
+      .select('name')
+      .eq('id', racquetData.brand_id)
+      .single();
+
+    const { data: modelData } = await supabase
+      .from('models')
+      .select('name')
+      .eq('id', racquetData.model_id)
+      .single();
+
+    // Add brand and model names to racquet data
+    racquetData.brand = brandData?.name || 'Unknown';
+    racquetData.model = modelData?.name || 'Unknown';
 
     // Get main string details from string_inventory
     const { data: mainStringData, error: stringError } = await supabase
@@ -52,7 +62,7 @@ export const createJob = async (jobData: JobFormData): Promise<{ data: Job | nul
     }
 
     // Get cross string details (if different)
-    let crossStringName = mainStringData?.string_name || 'Unknown';
+    let crossStringName = mainStringData?.model || 'Unknown';
     if (jobData.cross_string_id && jobData.cross_string_id !== jobData.string_id) {
       const { data: crossStringData, error: crossStringError } = await supabase
         .from('string_inventory')
@@ -64,12 +74,12 @@ export const createJob = async (jobData: JobFormData): Promise<{ data: Job | nul
         console.error('Error fetching cross string:', crossStringError);
         throw new Error('Failed to fetch cross string details');
       }
-      crossStringName = crossStringData?.string_name || 'Unknown';
+      crossStringName = crossStringData?.model || 'Unknown';
     }
 
     // Insert the job
     const { data, error } = await supabase
-      .from('stringing_jobs')
+      .from('jobs')
       .insert([
         {
           user_id: session.user.id,
@@ -107,7 +117,7 @@ export const createJob = async (jobData: JobFormData): Promise<{ data: Job | nul
   }
 };
 
-export const getJobs = async (status?: JobStatus) => {
+export const getJobs = async (status?: JobStatus | JobStatus[]) => {
   try {
     let query = supabase
       .from('jobs')
@@ -115,7 +125,11 @@ export const getJobs = async (status?: JobStatus) => {
       .order('created_at', { ascending: false });
 
     if (status) {
-      query = query.eq('job_status', status);
+      if (Array.isArray(status)) {
+        query = query.in('job_status', status);
+      } else {
+        query = query.eq('job_status', status);
+      }
     }
 
     const { data, error } = await query;

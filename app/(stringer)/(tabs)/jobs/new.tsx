@@ -85,49 +85,36 @@ export default function NewJobScreen() {
   const fetchRacquets = async () => {
     try {
       console.log('Fetching racquets...');
+      
+      // First get all racquets
       const { data: racquets, error } = await supabase
         .from('racquets')
-        .select(`
-          id,
-          brand:brands!inner (
-            id,
-            name
-          ),
-          model:models!inner (
-            id,
-            name
-          )
-        `)
+        .select('*')
         .order('id', { ascending: true });
 
-      if (error) {
-        console.error('Error fetching racquets:', error);
-        throw error;
-      }
+      if (error) throw error;
+      if (!racquets) return [];
 
-      console.log('Raw racquet data:', racquets);
+      // Then get all brands and models
+      const { data: brands } = await supabase.from('brands').select('*');
+      const { data: models } = await supabase.from('models').select('*');
 
       // Transform the data to match the Racquet type
-      const transformedRacquets = racquets.map(racquet => {
-        // Handle both array and single object responses
-        const brand = Array.isArray(racquet.brand) ? racquet.brand[0] : racquet.brand;
-        const model = Array.isArray(racquet.model) ? racquet.model[0] : racquet.model;
-
-        return {
-          id: racquet.id.toString(),
-          brand: brand?.name || '',
-          model: model?.name || '',
-          brand_id: brand?.id?.toString() || '',
-          model_id: model?.id?.toString() || '',
-          head_size: undefined,
-          weight_grams: undefined,
-          balance_point: undefined,
-          string_pattern: undefined
-        };
-      });
+      const transformedRacquets = racquets.map(racquet => ({
+        id: racquet.id.toString(),
+        brand: brands?.find(b => b.id === racquet.brand_id)?.name || 'Unknown Brand',
+        model: models?.find(m => m.id === racquet.model_id)?.name || 'Unknown Model',
+        brand_id: racquet.brand_id.toString(),
+        model_id: racquet.model_id.toString(),
+        head_size: racquet.head_size,
+        weight_grams: racquet.weight_grams,
+        balance_point: racquet.balance_point,
+        string_pattern: racquet.string_pattern
+      }));
 
       console.log('Transformed racquets:', transformedRacquets);
       setRacquets(transformedRacquets);
+      return transformedRacquets;
     } catch (error) {
       console.error('Error in fetchRacquets:', error);
       throw error;
@@ -137,51 +124,32 @@ export default function NewJobScreen() {
   const fetchStrings = async () => {
     try {
       console.log('Fetching strings...');
+      // First get all strings
       const { data: strings, error } = await supabase
         .from('string_inventory')
-        .select(`
-          id,
-          string_name,
-          brand:brands!inner (
-            id,
-            name
-          ),
-          model:models!inner (
-            id,
-            name
-          )
-        `)
-        .order('string_name', { ascending: true });
+        .select('*')
+        .order('model', { ascending: true });
 
-      if (error) {
-        console.error('Error fetching strings:', error);
-        throw error;
-      }
-
-      console.log('Raw string data:', strings);
+      if (error) throw error;
+      if (!strings) return [];
 
       // Transform the data to match the StringItem type
-      const transformedStrings = strings.map(string => {
-        // Handle both array and single object responses
-        const brand = Array.isArray(string.brand) ? string.brand[0] : string.brand;
-        const model = Array.isArray(string.model) ? string.model[0] : string.model;
-
-        return {
-          id: string.id.toString(),
-          string_name: string.string_name,
-          brand: brand?.name || '',
-          model: model?.name || '',
-          brand_id: brand?.id?.toString() || '',
-          model_id: model?.id?.toString() || '',
-          gauge: '',
-          color: '',
-          price: 0,
-          cost_per_set: undefined
-        };
-      });
+      const transformedStrings = strings.map(stringItem => ({
+        id: stringItem.id.toString(),
+        string_name: stringItem.model || 'Unnamed String',
+        brand: stringItem.brand || 'Unknown Brand',
+        model: stringItem.model || 'Unknown Model',
+        brand_id: '', // Not available in string_inventory
+        model_id: '', // Not available in string_inventory
+        gauge: stringItem.gauge || '',
+        color: stringItem.color || '',
+        price: stringItem.price || 0,
+        cost_per_set: stringItem.cost_per_set
+      }));
 
       console.log('Transformed strings:', transformedStrings);
       setStrings(transformedStrings);
+      return transformedStrings;
     } catch (error) {
       console.error('Error in fetchStrings:', error);
       throw error;
