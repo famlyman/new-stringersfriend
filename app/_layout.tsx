@@ -127,25 +127,8 @@ export default function RootLayout() {
 
   const router = useRouter();
 
-  useEffect(() => {
-    // In development, clear session data when the app starts
-    const clearSession = async () => {
-      if (__DEV__) {
-        console.log('Development mode: Clearing session data');
-        try {
-          await clearDevSession();
-          // Clear any stored tokens or session data
-          await supabase.auth.signOut();
-          // Clear any cached routes or navigation state
-          router.replace('/(auth)');
-        } catch (error) {
-          console.error('Error clearing session data:', error);
-        }
-      }
-    };
-
-    clearSession();
-  }, [router]);
+  // Removed development mode session clearing to prevent unwanted sign-outs
+  // and redundant auth state changes
 
   // Show a loading indicator while the initial session is being fetched
   if (isLoading) {

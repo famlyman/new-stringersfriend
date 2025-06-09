@@ -40,24 +40,25 @@ export default function AuthProvider({ children, initialSession }: AuthProviderP
 
   useEffect(() => {
     let mounted = true;
+    let authListener: { subscription: { unsubscribe: () => void } } | null = null;
 
     async function initializeAuth() {
+      if (!mounted) return;
+      
       try {
         console.log("AuthProvider: Initializing auth...", { hasInitialSession: !!initialSession });
         
-        // First, check if we have an initial session
+        // Set initial state from props if available
         if (initialSession) {
           console.log("AuthProvider: Using initial session");
-          if (mounted) {
-            setSession(initialSession);
-            setUser(initialSession.user);
-            setIsLoading(false);
-          }
+          setSession(initialSession);
+          setUser(initialSession.user);
+          setIsLoading(false);
           return;
         }
 
         console.log("AuthProvider: No initial session, checking current session");
-        // If no initial session, try to get the current session
+        // Get the current session if no initial session provided
         const { data: { session: currentSession }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -71,31 +72,34 @@ export default function AuthProvider({ children, initialSession }: AuthProviderP
           setIsLoading(false);
         }
 
-        // Listen for auth state changes
-        const { data: authListener } = supabase.auth.onAuthStateChange(
-          async (_event, newSession) => {
-            console.log("AuthProvider: Auth state changed:", _event, newSession ? "has session" : "no session");
-            if (mounted) {
-              setSession(newSession);
+        // Set up auth state change listener
+        if (!authListener) {
+          const { data: listener } = supabase.auth.onAuthStateChange(
+            async (_event, newSession) => {
+              if (!mounted) return;
+              
+              console.log("AuthProvider: Auth state changed:", _event, newSession ? "has session" : "no session");
+              
+              setSession(prevSession => {
+                // Prevent unnecessary re-renders if session hasn't changed
+                if (prevSession?.access_token === newSession?.access_token) {
+                  return prevSession;
+                }
+                return newSession;
+              });
+              
               setUser(newSession?.user || null);
               setIsLoading(false);
 
-              // Handle sign out event
               if (_event === 'SIGNED_OUT') {
                 console.log("AuthProvider: User signed out");
-                // Session clearing is handled in the settings screen
                 setSession(null);
                 setUser(null);
               }
             }
-          }
-        );
-
-        return () => {
-          console.log("AuthProvider: Cleaning up...");
-          mounted = false;
-          authListener?.subscription.unsubscribe();
-        };
+          );
+          authListener = listener;
+        }
       } catch (error) {
         console.error("AuthProvider: Error initializing auth:", error);
         if (mounted) {
@@ -105,7 +109,15 @@ export default function AuthProvider({ children, initialSession }: AuthProviderP
     }
 
     initializeAuth();
-  }, [initialSession]); 
+
+    return () => {
+      mounted = false;
+      if (authListener) {
+        console.log("AuthProvider: Cleaning up...");
+        authListener.subscription.unsubscribe();
+      }
+    };
+  }, [initialSession]);
 
   const value = { session, user, isLoading, signOut };
 
