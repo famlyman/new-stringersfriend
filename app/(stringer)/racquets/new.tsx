@@ -4,20 +4,51 @@ import React, { useState } from 'react';
 import { Alert, StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { useAuth } from '../../../src/contexts/AuthContext';
 import { supabase } from '../../../src/lib/supabase';
+import SearchableDropdown from '../../components/SearchableDropdown';
+
+type Client = {
+  id: string;
+  full_name: string;
+};
 
 export default function NewRacquetScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
   const [headSize, setHeadSize] = useState('');
   const [stringPattern, setStringPattern] = useState('');
+  const [weightGrams, setWeightGrams] = useState('');
+  const [balancePoint, setBalancePoint] = useState('');
+  const [stiffnessRating, setStiffnessRating] = useState('');
+  const [lengthCm, setLengthCm] = useState('');
   const [notes, setNotes] = useState('');
 
+  React.useEffect(() => {
+    fetchClients();
+  }, []);
+
+  const fetchClients = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id, full_name')
+        .order('full_name');
+      
+      if (error) throw error;
+      setClients(data || []);
+    } catch (error) {
+      console.error('Error fetching clients:', error);
+      Alert.alert('Error', 'Failed to load clients.');
+    }
+  };
+
   const handleSubmit = async () => {
-    if (!brand || !model) {
-      Alert.alert('Error', 'Please enter both brand and model');
+    if (!selectedClientId || !brand || !model) {
+      Alert.alert('Error', 'Please select a client and enter brand and model');
       return;
     }
 
@@ -72,6 +103,7 @@ export default function NewRacquetScreen() {
           .single();
 
         if (maxIdError && maxIdError.code !== 'PGRST116') {
+          // PGRST116 means no rows found, which is fine for first model
           throw maxIdError;
         }
 
@@ -94,9 +126,27 @@ export default function NewRacquetScreen() {
         modelId = modelData.id;
       }
 
+      // Insert the new racquet into the racquets table
+      const { error: insertRacquetError } = await supabase
+        .from('racquets')
+        .insert({
+          client_id: selectedClientId,
+          brand_id: brandId,
+          model_id: modelId,
+          head_size: headSize ? parseInt(headSize) : null,
+          string_pattern: stringPattern || null,
+          weight_grams: weightGrams ? parseInt(weightGrams) : null,
+          balance_point: balancePoint || null,
+          stiffness_rating: stiffnessRating || null,
+          length_cm: lengthCm ? parseInt(lengthCm) : null,
+          notes: notes || null,
+        });
+
+      if (insertRacquetError) throw insertRacquetError;
+
       Alert.alert(
         'Success',
-        'Brand and model added successfully',
+        'Racquet added successfully',
         [
           {
             text: 'OK',
@@ -105,8 +155,8 @@ export default function NewRacquetScreen() {
         ]
       );
     } catch (error) {
-      console.error('Error adding brand/model:', error);
-      Alert.alert('Error', 'Failed to add brand/model. Please try again.');
+      console.error('Error adding racquet:', error);
+      Alert.alert('Error', `Failed to add racquet. ${(error as Error).message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -116,7 +166,7 @@ export default function NewRacquetScreen() {
     <View style={styles.container}>
       <Stack.Screen 
         options={{
-          title: 'Add New Brand/Model',
+          title: 'Add New Racquet',
           headerLeft: () => (
             <Ionicons 
               name="close" 
@@ -130,6 +180,19 @@ export default function NewRacquetScreen() {
       />
       
       <ScrollView style={styles.form}>
+        <View style={styles.section}>
+          <Text style={styles.label}>Client</Text>
+          <SearchableDropdown
+            label="Select Client"
+            items={clients.map(client => ({ id: client.id, label: client.full_name }))}
+            value={selectedClientId}
+            onChange={setSelectedClientId}
+            searchFields={['label']}
+            placeholder="Select a client..."
+            required
+          />
+        </View>
+
         <View style={styles.section}>
           <Text style={styles.label}>Brand</Text>
           <TextInput
@@ -152,6 +215,83 @@ export default function NewRacquetScreen() {
           />
         </View>
 
+        <View style={styles.section}>
+          <Text style={styles.label}>Head Size (sq. in.)</Text>
+          <TextInput
+            style={styles.input}
+            value={headSize}
+            onChangeText={setHeadSize}
+            placeholder="e.g., 100"
+            keyboardType="numeric"
+          />
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>String Pattern</Text>
+          <TextInput
+            style={styles.input}
+            value={stringPattern}
+            onChangeText={setStringPattern}
+            placeholder="e.g., 16x19"
+          />
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>Weight (grams)</Text>
+          <TextInput
+            style={styles.input}
+            value={weightGrams}
+            onChangeText={setWeightGrams}
+            placeholder="e.g., 300"
+            keyboardType="numeric"
+          />
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>Balance Point (cm from butt cap)</Text>
+          <TextInput
+            style={styles.input}
+            value={balancePoint}
+            onChangeText={setBalancePoint}
+            placeholder="e.g., 32"
+            keyboardType="numeric"
+          />
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>Stiffness Rating (RA)</Text>
+          <TextInput
+            style={styles.input}
+            value={stiffnessRating}
+            onChangeText={setStiffnessRating}
+            placeholder="e.g., 65"
+            keyboardType="numeric"
+          />
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>Length (cm)</Text>
+          <TextInput
+            style={styles.input}
+            value={lengthCm}
+            onChangeText={setLengthCm}
+            placeholder="e.g., 68.5"
+            keyboardType="numeric"
+          />
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>Notes</Text>
+          <TextInput
+            style={[styles.input, styles.notesInput]}
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="Any specific notes about this racquet..."
+            multiline
+            numberOfLines={4}
+          />
+        </View>
+
         <TouchableOpacity
           style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
           onPress={handleSubmit}
@@ -160,7 +300,7 @@ export default function NewRacquetScreen() {
           {isSubmitting ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.submitButtonText}>Add Brand/Model</Text>
+            <Text style={styles.submitButtonText}>Add Racquet</Text>
           )}
         </TouchableOpacity>
       </ScrollView>

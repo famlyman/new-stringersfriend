@@ -46,7 +46,7 @@ export default function DashboardScreen() {
         const { data: inventory, error: inventoryError } = await supabase
           .from('string_inventory')
           .select('stock_quantity')
-          .eq('user_id', user.id);
+          .eq('stringer_id', user.id);
         
         if (inventoryError) {
           console.error('Error fetching inventory:', inventoryError);

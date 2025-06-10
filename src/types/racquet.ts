@@ -17,4 +17,5 @@ export interface Racquet {
   balance_point?: string;
   string_pattern?: string;
   name?: string;
+  notes?: string;
 } 

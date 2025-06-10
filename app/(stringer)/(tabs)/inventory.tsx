@@ -16,21 +16,22 @@ import { supabase } from '../../../src/lib/supabase';
 
 type StringInventory = {
   id: string;
-  string_name: string;
-  brand: string;
-  type?: string;
   gauge: string;
   color: string;
   length_feet: number;
   stock_quantity: number;
   min_stock_level: number;
   cost_per_set: number;
-  user_id: string;
   created_at: string;
   updated_at: string;
-  brand_info: {
-    string_brand: string;
-  };
+  string_brand: {
+    id: number;
+    name: string;
+  } | null;
+  string_model: {
+    id: number;
+    name: string;
+  } | null;
 };
 
 export default function InventoryScreen() {
@@ -48,9 +49,29 @@ export default function InventoryScreen() {
 
     try {
       const { data, error: fetchError } = await supabase
-        .rpc('get_inventory_with_brands', {
-          user_id: session.user.id
-        });
+        .from('string_inventory')
+        .select(`
+          id,
+          gauge,
+          color,
+          length_feet,
+          stock_quantity,
+          min_stock_level,
+          cost_per_set,
+          created_at,
+          updated_at,
+          string_brand!brand_id (
+            id,
+            name
+          ),
+          string_model!model_id (
+            id,
+            name
+          )
+        `)
+        .eq('stringer_id', session.user.id)
+        .order('created_at', { ascending: false })
+        .returns<StringInventory[]>();
 
       if (fetchError) throw fetchError;
       console.log('Inventory data:', data);
@@ -76,19 +97,19 @@ export default function InventoryScreen() {
     fetchInventory();
   }, [fetchInventory]);
 
-  const renderItem = ({ item }: { item: any }) => {
+  const renderItem = ({ item }: { item: StringInventory }) => {
     console.log('Rendering item:', item);
-    const truncatedModel = item.model_name ? 
-      (item.model_name.length > 7 ? item.model_name.substring(0, 7) + '...' : item.model_name) 
-      : item.model_id;
+    const brandName = item.string_brand?.name || 'Unknown Brand';
+    const modelName = item.string_model?.name;
+    const truncatedModel = modelName ? 
+      (modelName.length > 12 ? modelName.substring(0, 12) + '...' : modelName) 
+      : item.string_model?.id || 'Unknown Model';
     
     return (
       <View style={styles.inventoryItem}>
         <View style={styles.itemHeader}>
           <View>
-            <Text style={styles.itemTitle}>
-              {item.brand_name} {truncatedModel}
-            </Text>
+            <Text style={styles.itemTitle}>{`${brandName} ${truncatedModel}`}</Text>
             <Text style={styles.itemSubtitle}>{item.gauge} - {item.color}</Text>
           </View>
           <View style={styles.headerActions}>
@@ -370,5 +391,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#1976d2',
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
   },
 });

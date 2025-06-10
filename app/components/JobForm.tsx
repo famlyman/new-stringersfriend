@@ -27,6 +27,10 @@ interface JobFormProps {
   onAddClient: () => void;
   onAddRacquet: () => void;
   onAddString: () => void;
+  brands: { id: string; name: string }[];
+  models: { id: string; name: string; brand_id: string }[];
+  stringBrands: { string_id: string; string_brand: string }[];
+  stringModels: { model_id: string; model: string; brand_id: string }[];
 }
 
 export default function JobForm({
@@ -39,7 +43,11 @@ export default function JobForm({
   strings,
   onAddClient,
   onAddRacquet,
-  onAddString
+  onAddString,
+  brands,
+  models,
+  stringBrands,
+  stringModels
 }: JobFormProps) {
   const [formData, setFormData] = useState<JobFormData>({
     client_id: initialData.client_id || '',
@@ -53,6 +61,46 @@ export default function JobForm({
     price: initialData.price || ''
   });
 
+  const [selectedBrandId, setSelectedBrandId] = useState<string>('');
+  const [filteredModels, setFilteredModels] = useState<{ id: string; name: string }[]>([]);
+  const [selectedStringBrandId, setSelectedStringBrandId] = useState<string>('');
+  const [filteredStringModels, setFilteredStringModels] = useState<{ id: string; label: string }[]>([]);
+  const [selectedCrossStringBrandId, setSelectedCrossStringBrandId] = useState<string>('');
+  const [filteredCrossStringModels, setFilteredCrossStringModels] = useState<{ id: string; label: string }[]>([]);
+
+  useEffect(() => {
+    if (selectedBrandId) {
+      const modelsForBrand = models
+        .filter(model => model.brand_id === selectedBrandId)
+        .map(model => ({ id: model.id, name: model.name }));
+      setFilteredModels(modelsForBrand);
+    } else {
+      setFilteredModels([]);
+    }
+  }, [selectedBrandId, models]);
+
+  useEffect(() => {
+    if (selectedStringBrandId) {
+      const modelsForStringBrand = stringModels
+        .filter(model => model.brand_id === selectedStringBrandId)
+        .map(model => ({ id: model.model_id, label: model.model }));
+      setFilteredStringModels(modelsForStringBrand);
+    } else {
+      setFilteredStringModels([]);
+    }
+  }, [selectedStringBrandId, stringModels]);
+
+  useEffect(() => {
+    if (selectedCrossStringBrandId) {
+      const modelsForCrossStringBrand = stringModels
+        .filter(model => model.brand_id === selectedCrossStringBrandId)
+        .map(model => ({ id: model.model_id, label: model.model }));
+      setFilteredCrossStringModels(modelsForCrossStringBrand);
+    } else {
+      setFilteredCrossStringModels([]);
+    }
+  }, [selectedCrossStringBrandId, stringModels]);
+
   const handleInputChange = (field: keyof JobFormData, value: string) => {
     setFormData(prev => ({
       ...prev,
@@ -60,7 +108,37 @@ export default function JobForm({
     }));
   };
 
+  const handleBrandChange = (brandId: string) => {
+    console.log('Brand selected:', brandId);
+    setSelectedBrandId(brandId);
+    handleInputChange('racquet_brand_id', brandId);
+    // Reset racquet_id when brand changes
+    handleInputChange('racquet_id', '');
+  };
+
+  const handleModelChange = (modelId: string) => {
+    console.log('handleModelChange - Selected Model ID:', modelId);
+    console.log('handleModelChange - Current Selected Brand ID:', selectedBrandId);
+    console.log('handleModelChange - All Racquets:', racquets);
+
+    // Find the racquet that matches both the selected brand and model
+    const matchingRacquet = racquets.find(
+      r => r.brand_id === selectedBrandId && r.model_id === modelId
+    );
+
+    console.log('handleModelChange - Matching Racquet Found:', matchingRacquet);
+
+    if (matchingRacquet) {
+      console.log('handleModelChange - Setting racquet_id to:', matchingRacquet.id);
+      handleInputChange('racquet_id', matchingRacquet.id);
+    } else {
+      console.log('handleModelChange - No matching racquet found, resetting racquet_id.');
+      handleInputChange('racquet_id', '');
+    }
+  };
+
   const handleSubmit = async () => {
+    console.log('handleSubmit - Final formData before submission:', formData);
     try {
       await onSubmit(formData);
     } catch (error) {
@@ -84,17 +162,20 @@ export default function JobForm({
     }));
   }, [strings]);
 
-  const racquetItems = useMemo(() => {
-    if (!racquets) return [];
-    return racquets.map((racquet: Racquet) => ({
-      id: racquet.id,
-      label: `${racquet.brand} ${racquet.model}`,
-      brand: racquet.brand,
-      model: racquet.model,
-      brand_id: racquet.brand_id,
-      model_id: racquet.model_id
+  const brandItems = useMemo(() => {
+    return brands.map(brand => ({
+      id: brand.id,
+      label: brand.name
     }));
-  }, [racquets]);
+  }, [brands]);
+
+  const modelItems = useMemo(() => {
+    return filteredModels.map(model => ({
+      id: model.id,
+      label: model.name,
+      brand_id: selectedBrandId
+    }));
+  }, [filteredModels, selectedBrandId]);
 
   const clientItems = useMemo(() => {
     if (!clients) return [];
@@ -105,11 +186,56 @@ export default function JobForm({
     }));
   }, [clients]);
 
-  const handleRacquetChange = (value: string) => {
-    const selectedRacquet = racquets.find(r => r.id === value);
-    if (selectedRacquet && selectedRacquet.brand_id) {
-      handleInputChange('racquet_id', value);
-      handleInputChange('racquet_brand_id', selectedRacquet.brand_id);
+  const stringBrandItems = useMemo(() => {
+    return stringBrands.map(brand => ({
+      id: brand.string_id,
+      label: brand.string_brand
+    }));
+  }, [stringBrands]);
+
+  const stringModelItems = useMemo(() => {
+    return filteredStringModels.map(model => ({
+      id: model.id,
+      label: model.label
+    }));
+  }, [filteredStringModels]);
+
+  const handleStringBrandChange = (brandId: string) => {
+    setSelectedStringBrandId(brandId);
+    // Reset string_id when brand changes
+    handleInputChange('string_id', '');
+    handleInputChange('cross_string_id', '');
+  };
+
+  const handleStringModelChange = (modelId: string) => {
+    // Find the string that matches both the selected brand and model
+    const matchingString = strings.find(
+      s => s.brand_id === selectedStringBrandId && s.model_id === modelId
+    );
+    if (matchingString) {
+      handleInputChange('string_id', matchingString.id);
+    } else {
+      // If no matching string is found, still update the model selection
+      handleInputChange('string_id', modelId);
+    }
+  };
+
+  const handleCrossStringBrandChange = (brandId: string) => {
+    setSelectedCrossStringBrandId(brandId);
+    // Reset cross_string_id when brand changes
+    handleInputChange('cross_string_id', '');
+  };
+
+  const handleCrossStringModelChange = (modelId: string) => {
+    // Find the string that matches both the selected brand and model
+    const matchingString = strings.find(
+      s => s.brand_id === selectedCrossStringBrandId && s.model_id === modelId
+    );
+    if (matchingString) {
+      handleInputChange('cross_string_id', matchingString.id);
+    } else {
+      // If no matching string is found, still update the model selection
+      handleInputChange('cross_string_id', modelId);
     }
   };
 
@@ -134,13 +260,23 @@ export default function JobForm({
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Racquet</Text>
         <SearchableDropdown
-          label="Racquet"
-          items={racquetItems}
-          value={formData.racquet_id}
-          onChange={handleRacquetChange}
-          searchFields={['label', 'brand', 'model']}
-          placeholder="Select a racquet..."
+          label="Brand"
+          items={brandItems}
+          value={selectedBrandId}
+          onChange={handleBrandChange}
+          searchFields={['label']}
+          placeholder="Select a brand..."
           required
+        />
+        <SearchableDropdown
+          label="Model"
+          items={modelItems}
+          value={formData.racquet_id || ''}
+          onChange={handleModelChange}
+          searchFields={['label']}
+          placeholder="Select a model..."
+          required
+          disabled={!selectedBrandId}
         />
         <TouchableOpacity style={styles.addButton} onPress={onAddRacquet}>
           <Text style={styles.addButtonText}>+ Add New Racquet</Text>
@@ -150,40 +286,30 @@ export default function JobForm({
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Strings</Text>
         <View style={styles.stringSection}>
-          <Text style={styles.stringLabel}>Mains:</Text>
+          <View style={styles.stringHeader}>
+            <Text style={styles.stringLabel}>Mains:</Text>
+          </View>
           <SearchableDropdown
-            label="Mains"
-            items={stringItems}
-            value={formData.string_id}
-            onChange={(value: string) => handleInputChange('string_id', value)}
-            searchFields={['label', 'brand', 'model']}
-            placeholder="Select string"
+            label="Brand"
+            items={stringBrandItems}
+            value={selectedStringBrandId}
+            onChange={handleStringBrandChange}
+            searchFields={['label']}
+            placeholder="Select string brand"
             required
           />
-        </View>
-
-        <View style={styles.stringSection}>
-          <Text style={styles.stringLabel}>Crosses:</Text>
           <SearchableDropdown
-            label="Crosses"
-            items={stringItems}
-            value={formData.cross_string_id || ''}
-            onChange={(value: string) => handleInputChange('cross_string_id', value)}
-            searchFields={['label', 'brand', 'model']}
-            placeholder="Select string (optional)"
+            label="Model"
+            items={stringModelItems}
+            value={formData.string_id}
+            onChange={handleStringModelChange}
+            searchFields={['label']}
+            placeholder="Select string model"
+            required
+            disabled={!selectedStringBrandId}
           />
-        </View>
-
-        <TouchableOpacity style={styles.addButton} onPress={onAddString}>
-          <Text style={styles.addButtonText}>+ Add New String</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Tension</Text>
-        <View style={styles.tensionSection}>
           <View style={styles.tensionInput}>
-            <Text style={styles.tensionLabel}>Mains:</Text>
+            <Text style={styles.tensionLabel}>Tension Mains:</Text>
             <TextInput
               style={styles.input}
               value={formData.tension_main}
@@ -192,8 +318,31 @@ export default function JobForm({
               keyboardType="numeric"
             />
           </View>
+        </View>
+
+        <View style={styles.stringSection}>
+          <View style={styles.stringHeader}>
+            <Text style={styles.stringLabel}>Crosses:</Text>
+          </View>
+          <SearchableDropdown
+            label="Brand"
+            items={stringBrandItems}
+            value={selectedCrossStringBrandId}
+            onChange={handleCrossStringBrandChange}
+            searchFields={['label']}
+            placeholder="Select string brand"
+          />
+          <SearchableDropdown
+            label="Model"
+            items={filteredCrossStringModels}
+            value={formData.cross_string_id || ''}
+            onChange={handleCrossStringModelChange}
+            searchFields={['label']}
+            placeholder="Select string model (optional)"
+            disabled={!selectedCrossStringBrandId}
+          />
           <View style={styles.tensionInput}>
-            <Text style={styles.tensionLabel}>Crosses:</Text>
+            <Text style={styles.tensionLabel}>Tension Crosses:</Text>
             <TextInput
               style={styles.input}
               value={formData.tension_cross}
@@ -203,6 +352,10 @@ export default function JobForm({
             />
           </View>
         </View>
+
+        <TouchableOpacity style={styles.addButton} onPress={onAddString}>
+          <Text style={styles.addButtonText}>+ Add New String</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.section}>
@@ -257,9 +410,12 @@ const styles = StyleSheet.create({
   stringSection: {
     marginBottom: 16,
   },
+  stringHeader: {
+    marginBottom: 8,
+  },
   stringLabel: {
     fontSize: 16,
-    marginBottom: 8,
+    fontWeight: '600',
   },
   tensionSection: {
     flexDirection: 'row',

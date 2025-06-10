@@ -28,6 +28,7 @@ interface SearchableDropdownProps {
   searchFields: string[];
   placeholder: string;
   required?: boolean;
+  disabled?: boolean;
 }
 
 export default function SearchableDropdown({
@@ -37,7 +38,8 @@ export default function SearchableDropdown({
   onChange,
   searchFields,
   placeholder,
-  required = false
+  required = false,
+  disabled = false
 }: SearchableDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -52,21 +54,30 @@ export default function SearchableDropdown({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>
-        {label}
-        {required && <Text style={styles.required}> *</Text>}
-      </Text>
+      <View style={styles.labelContainer}>
+        <Text style={styles.label}>{label}</Text>
+        {required && <Text style={styles.required}>*</Text>}
+      </View>
       <TouchableOpacity
-        style={[styles.dropdown, isOpen && styles.dropdownOpen]}
-        onPress={() => setIsOpen(!isOpen)}
+        style={[
+          styles.dropdown,
+          isOpen && styles.dropdownOpen,
+          disabled && styles.dropdownDisabled
+        ]}
+        onPress={() => !disabled && setIsOpen(!isOpen)}
+        disabled={disabled}
       >
-        <Text style={[styles.selectedText, !value && styles.placeholder]}>
+        <Text style={[
+          styles.selectedText,
+          !value && styles.placeholder,
+          disabled && styles.textDisabled
+        ]}>
           {value ? items.find(item => item.id === value)?.label : placeholder}
         </Text>
         <Ionicons
           name={isOpen ? 'chevron-up' : 'chevron-down'}
           size={20}
-          color="#666"
+          color={disabled ? '#ccc' : '#666'}
         />
       </TouchableOpacity>
 
@@ -92,12 +103,14 @@ export default function SearchableDropdown({
                   setSearchQuery('');
                 }}
               >
-                <Text style={[
-                  styles.dropdownItemText,
-                  value === item.id && styles.selectedItemText
-                ]}>
-                  {item.label}
-                </Text>
+                <View style={styles.dropdownItemContent}>
+                  <Text style={[
+                    styles.dropdownItemText,
+                    value === item.id && styles.selectedItemText
+                  ]}>
+                    {item.label}
+                  </Text>
+                </View>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -111,11 +124,15 @@ const styles = StyleSheet.create({
   container: {
     marginBottom: 16,
   },
+  labelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   label: {
     fontSize: 14,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 8,
   },
   required: {
     color: 'red',
@@ -143,9 +160,16 @@ const styles = StyleSheet.create({
   },
   dropdownList: {
     backgroundColor: '#fff',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    maxHeight: '80%',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    marginTop: 4,
+    maxHeight: 200,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   searchInput: {
     padding: 16,
@@ -154,7 +178,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   scrollView: {
-    maxHeight: '80%',
+    maxHeight: 200,
   },
   dropdownItem: {
     padding: 16,
@@ -170,5 +194,15 @@ const styles = StyleSheet.create({
   },
   selectedItemText: {
     fontWeight: 'bold',
+  },
+  dropdownDisabled: {
+    backgroundColor: '#f5f5f5',
+    borderColor: '#ddd',
+  },
+  textDisabled: {
+    color: '#999',
+  },
+  dropdownItemContent: {
+    flex: 1,
   },
 }); 
