@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, ScrollView, TouchableOpacity, Text, TextInput } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Text, TextInput, Platform } from 'react-native';
 import { useAuth } from '../../../../src/contexts/AuthContext';
 import { supabase } from '../../../../src/lib/supabase';
 import SearchableDropdown from '../../../components/SearchableDropdown';
 import CustomAlert from '../../../components/CustomAlert'; // Import CustomAlert
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 // --- UPDATED TYPES ---
 
@@ -34,19 +35,36 @@ type Client = {
   main_model?: StringReference;
   cross_brand?: StringReference;
   cross_model?: StringReference;
+  notes?: string | null; // Client's general notes
 };
 
 // Define the raw response type from Supabase based on the actual schema
-type SupabaseRacquetResponse = {
+type StringBrand = {
+  id: number;
+  name: string;
+};
+
+type StringModel = {
+  id: number;
+  name: string;
+  brand?: StringBrand; // Corrected: brand is a single object, not an array
+};
+
+// Define the type for the string model response
+type StringModelResponse = {
+  id: number;
+  name: string;
+  brand: { // Corrected: brand is a single object, not an array
+    id: number;
+    name: string;
+  };
+};
+
+// RacquetResponse: Represents the data structure directly returned by Supabase SELECT query for racquets
+type RacquetResponse = {
   id: string;
-  brand: {
-    id: number;
-    name: string;
-  }[];
-  model: {
-    id: number;
-    name: string;
-  }[];
+  brand: { name: string }; // Corrected: brand is a single object
+  model: { name: string }; // Corrected: model is a single object, but the select query returns an array
   head_size: number | null;
   weight_grams: number | null;
   balance_point: string | null;
@@ -55,19 +73,6 @@ type SupabaseRacquetResponse = {
   last_stringing_date: string | null;
   notes: string | null;
 };
-
-// Define the type for the string model response
-type StringModelResponse = {
-  id: number;
-  name: string;
-  brand: {
-    id: number;
-    name: string;
-  }[];
-};
-
-// RacquetResponse: Represents the data structure directly returned by Supabase SELECT query for racquets
-type RacquetResponse = SupabaseRacquetResponse;
 
 // Racquet: Local representation of racquet data for editable form.
 // This type is used after transforming RacquetResponse to simplify the form.
@@ -85,6 +90,7 @@ type Racquet = {
   string_tension_crosses?: number | null; // Tension notes on racquet (from DB)
   string_date?: string | null; // Last stringing date (from DB)
   notes?: string | null; // General racquet notes
+  stringing_notes?: string | null; // Previous stringing notes
 };
 
 // JobFormData: job_type and job_status are now ENUMs in DB but sent as strings from client
@@ -109,6 +115,51 @@ type JobStringingDetailsFormData = {
 };
 
 export default function NewJobScreen() {
+  const [selectedMainBrandId, setSelectedMainBrandId] = useState<number | null>(null);
+  const [selectedMainModelId, setSelectedMainModelId] = useState<number | null>(null);
+  const [selectedCrossBrandId, setSelectedCrossBrandId] = useState<number | null>(null);
+  const [selectedCrossModelId, setSelectedCrossModelId] = useState<number | null>(null);
+
+  // Add stringBrands state and fetch logic
+  const [stringBrands, setStringBrands] = useState<StringBrand[]>([]);
+  const [isLoadingStringBrands, setIsLoadingStringBrands] = useState(false);
+
+  // Fetch string brands on mount
+  useEffect(() => {
+    const fetchStringBrands = async () => {
+      try {
+        setIsLoadingStringBrands(true);
+        const { data, error } = await supabase
+          .from('string_brand')
+          .select('id, name')
+          .order('name');
+        if (error) throw error;
+        setStringBrands(data || []);
+      } catch (error) {
+        console.error('Error fetching string brands:', error);
+        showAlert('Error', 'Failed to load string brands');
+      } finally {
+        setIsLoadingStringBrands(false);
+      }
+    };
+    fetchStringBrands();
+  }, []);
+
+  // --- Helper functions for US date format ---
+  function formatDateUS(date: Date): string {
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    const yyyy = date.getFullYear();
+    return `${mm}/${dd}/${yyyy}`;
+  }
+
+  function parseDateUS(input: string): string {
+    const [mm, dd, yyyy] = input.split('/');
+    if (!mm || !dd || !yyyy) return '';
+    const date = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+    return isNaN(date.getTime()) ? '' : date.toISOString();
+  }
+
   const router = useRouter();
   const { session } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
@@ -119,6 +170,8 @@ export default function NewJobScreen() {
   const [clientRacquets, setClientRacquets] = useState<Racquet[]>([]);
   const [selectedRacquetId, setSelectedRacquetId] = useState<string>('');
   const [editableRacquet, setEditableRacquet] = useState<Racquet | null>(null);
+  const [stringModels, setStringModels] = useState<StringReference[]>([]);
+  const [isLoadingStringModels, setIsLoadingStringModels] = useState(false);
   const [formData, setFormData] = useState<JobFormData>({
     client_id: '',
     racquet_id: '',
@@ -142,10 +195,48 @@ export default function NewJobScreen() {
     setAlertVisible(false);
   };
 
-  // Load clients on mount
+  // Load clients and string models on mount
   useEffect(() => {
     fetchClients();
+    fetchStringModels();
   }, []);
+  
+  // Fetch all string models for the searchable dropdown
+  const fetchStringModels = async () => {
+    try {
+      setIsLoadingStringModels(true);
+      const { data, error } = await supabase
+        .from('string_model')
+        .select(`
+          id,
+          name,
+          brand:brand_id (
+            id,
+            name
+          )
+        `)
+        .order('name');
+
+      if (error) throw error;
+      // Correctly type and transform models: brand is a single object, not an array
+      const models = (data || []) as unknown as StringModelResponse[];
+      const formattedModels = models.map(model => {
+        const brand = Array.isArray(model.brand) ? model.brand[0] : model.brand; // Handle both array and object cases
+        return {
+          id: model.id,
+          name: model.name, // Just use the model name, don't combine with brand
+          brand: brand ? { id: brand.id, name: brand.name } : undefined // Keep brand info separate
+        };
+      });
+
+      setStringModels(formattedModels);
+    } catch (error) {
+      console.error('Error fetching string models:', error);
+      showAlert('Error', 'Failed to load string models');
+    } finally {
+      setIsLoadingStringModels(false);
+    }
+  };
 
   // Load client racquets when client is selected
   useEffect(() => {
@@ -186,10 +277,9 @@ export default function NewJobScreen() {
           .single();
 
         if (error) throw error;
-
         if (data) {
-          const modelData = data as StringModelResponse;
-          const brandData = modelData.brand[0] ? { id: modelData.brand[0].id, name: modelData.brand[0].name } : undefined;
+          const modelData = data as unknown as StringModelResponse;
+          const brandData = modelData.brand ? { id: modelData.brand.id, name: modelData.brand.name } : undefined;
           return {
             id: modelData.id,
             name: brandData ? `${brandData.name} ${modelData.name}` : modelData.name,
@@ -293,14 +383,8 @@ export default function NewJobScreen() {
         .from('racquets')
         .select(`
           id,
-          brand:brands!inner(
-            id,
-            name
-          ),
-          model:models!inner(
-            id,
-            name
-          ),
+          brand:brands!inner(name),
+          model:models!inner(name),
           head_size,
           weight_grams,
           balance_point,
@@ -310,34 +394,34 @@ export default function NewJobScreen() {
           stringing_notes
         `)
         .eq('client_id', clientId)
+        .eq('is_active', true)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      // Log the stringified data to see the full nested structure
+      const stringifiedData = JSON.stringify(data, null, 2);
+      console.log('Raw data from fetchClientRacquets:', stringifiedData);
 
-      // Cast to the exact Supabase response type based on the schema
-      const racquetsData = (data || []) as SupabaseRacquetResponse[];
-
+      const racquetsData = (data || []) as unknown as RacquetResponse[]; // Cast to unknown first to avoid type errors
+      // FIX: The select query returns brand and model as arrays, not single objects. Adjust mapping.
       const transformedRacquets = racquetsData.map(racquet => ({
         id: racquet.id,
-        brand: racquet.brand[0]?.name || '',
-        model: racquet.model[0]?.name || '',
+        brand: racquet.brand?.name || '', // Access name directly from brand object
+        model: racquet.model.name || '', // Corrected: Access name directly from model object
         head_size: racquet.head_size,
         weight_grams: racquet.weight_grams,
         balance_point: racquet.balance_point,
         string_pattern: racquet.string_pattern,
         string_mains: racquet.stringing_notes?.split('Mains: ')[1]?.split(',')[0]?.trim() || '',
         string_crosses: racquet.stringing_notes?.split('Crosses: ')[1]?.split(',')[0]?.trim() || '',
-        string_tension_mains: null, // These will be handled by job_stringing_details table
-        string_tension_crosses: null, // These will be handled by job_stringing_details table
+        string_tension_mains: null,
+        string_tension_crosses: null,
         string_date: racquet.last_stringing_date,
-        notes: racquet.notes
+        notes: racquet.notes,
+        stringing_notes: racquet.stringing_notes // Include the full stringing notes
       }));
 
       setClientRacquets(transformedRacquets);
-
-      if (transformedRacquets.length === 1) {
-        handleRacquetSelect(transformedRacquets[0]);
-      }
     } catch (error) {
       console.error('Error fetching client racquets:', error);
       showAlert('Error', 'Failed to load client racquets');
@@ -351,47 +435,86 @@ export default function NewJobScreen() {
     const selectedClient = clients.find(client => client.id === clientId);
     if (!selectedClient) return;
 
-    // Apply client's preferred string details to editableRacquet if a racquet is selected
-    // Use an effect hook for this logic when editableRacquet or selectedClient changes
-    // For now, keep it here but note it's not ideal for reactivity if editableRacquet updates later
-    if (editableRacquet) {
-      const updatedRacquet = { ...editableRacquet };
+    // Reset racquet selection when client changes
+    setSelectedRacquetId('');
+    setEditableRacquet(null);
 
-      // Set default tensions if available (converted to string for TextInput)
-      if (selectedClient.default_tension_main !== undefined && selectedClient.default_tension_main !== null) {
-        updatedRacquet.string_tension_mains = selectedClient.default_tension_main;
-      }
-      if (selectedClient.default_tension_cross !== undefined && selectedClient.default_tension_cross !== null) {
-        updatedRacquet.string_tension_crosses = selectedClient.default_tension_cross;
-      }
-
-      // Set preferred strings if available. Note: these are display names.
-      const mainBrandName = selectedClient.main_brand?.name;
-      const mainModelName = selectedClient.main_model?.name; // This includes brand if fetchStringData combines it
-
-      const crossBrandName = selectedClient.cross_brand?.name;
-      const crossModelName = selectedClient.cross_model?.name; // This includes brand if fetchStringData combines it
-
-      if (mainModelName) { // mainModelName already contains brand if available
-        updatedRacquet.string_mains = mainModelName;
-      } else if (mainBrandName) {
-        updatedRacquet.string_mains = mainBrandName;
-      }
-
-      if (crossModelName) { // crossModelName already contains brand if available
-        updatedRacquet.string_crosses = crossModelName;
-      } else if (crossBrandName) {
-        updatedRacquet.string_crosses = crossBrandName;
-      }
-
-      setEditableRacquet(updatedRacquet);
-    }
+    // Fetch client's racquets
+    await fetchClientRacquets(clientId);
   };
 
   const handleRacquetSelect = (racquet: Racquet) => {
+    console.log('Racquet object passed to handleRacquetSelect:', racquet); // Debug log
     setSelectedRacquetId(racquet.id);
-    setEditableRacquet({ ...racquet });
     setFormData(prev => ({ ...prev, racquet_id: racquet.id }));
+
+    const selectedClient = clients.find(client => client.id === selectedClientId);
+
+    // Set initial string names for display in TextInputs based on client preferences or existing racquet data
+    const initialStringMains = selectedClient?.main_model?.name || selectedClient?.main_brand?.name || racquet.string_mains || '';
+    const initialStringCrosses = selectedClient?.cross_model?.name || selectedClient?.cross_brand?.name || racquet.string_crosses || '';
+
+    const updatedRacquet = {
+      ...racquet,
+      string_tension_mains: selectedClient?.default_tension_main || racquet.string_tension_mains,
+      string_tension_crosses: selectedClient?.default_tension_cross || racquet.string_tension_crosses,
+      string_mains: initialStringMains,
+      string_crosses: initialStringCrosses,
+    };
+
+    setEditableRacquet(updatedRacquet);
+    console.log('Editable Racquet after setting:', updatedRacquet);
+
+    // Set the selected string brand and model IDs for the SearchableDropdowns
+    if (selectedClient?.preferred_main_brand_id) {
+      setSelectedMainBrandId(selectedClient.preferred_main_brand_id);
+      // Only set the model if we have both brand and model IDs
+      if (selectedClient.preferred_main_model_id) {
+        const mainModel = stringModels.find(
+          model => model?.brand?.id === selectedClient.preferred_main_brand_id && 
+                  model?.id === selectedClient.preferred_main_model_id
+        );
+        if (mainModel) {
+          setSelectedMainModelId(mainModel.id);
+          handleRacquetDetailChange('string_mains', mainModel.name);
+        } else {
+          setSelectedMainModelId(null);
+          handleRacquetDetailChange('string_mains', initialStringMains);
+        }
+      } else {
+        setSelectedMainModelId(null);
+        handleRacquetDetailChange('string_mains', initialStringMains);
+      }
+    } else {
+      setSelectedMainBrandId(null);
+      setSelectedMainModelId(null);
+      handleRacquetDetailChange('string_mains', initialStringMains);
+    }
+
+    if (selectedClient?.preferred_cross_brand_id) {
+      setSelectedCrossBrandId(selectedClient.preferred_cross_brand_id);
+      // Only set the model if we have both brand and model IDs
+      if (selectedClient.preferred_cross_model_id) {
+        const crossModel = stringModels.find(
+          model => model?.brand?.id === selectedClient.preferred_cross_brand_id && 
+                  model?.id === selectedClient.preferred_cross_model_id
+        );
+        if (crossModel) {
+          setSelectedCrossModelId(crossModel.id);
+          handleRacquetDetailChange('string_crosses', crossModel.name);
+        } else {
+          setSelectedCrossModelId(null);
+          handleRacquetDetailChange('string_crosses', initialStringCrosses);
+        }
+      } else {
+        setSelectedCrossModelId(null);
+        handleRacquetDetailChange('string_crosses', initialStringCrosses);
+      }
+    } else {
+      setSelectedCrossBrandId(null);
+      setSelectedCrossModelId(null);
+      handleRacquetDetailChange('string_crosses', initialStringCrosses);
+    }
   };
 
   const handleRacquetDetailChange = (field: keyof Racquet, value: string | number | null) => {
@@ -406,9 +529,23 @@ export default function NewJobScreen() {
       }
     }
 
-    setEditableRacquet(prev => prev ? { ...prev, [field]: parsedValue } : null);
+    setEditableRacquet(prev => {
+      const newRacquet = prev ? { ...prev, [field]: parsedValue } : null;
+      console.log(`handleRacquetDetailChange: ${field} updated to`, parsedValue, 'New editableRacquet:', newRacquet); // Debug log
+      return newRacquet;
+    });
   };
 
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      setSelectedDate(selectedDate);
+      setFormData(prev => ({ ...prev, due_date: selectedDate.toISOString() }));
+    }
+  };
 
   const handleSubmit = async () => {
     if (!selectedClientId || !selectedRacquetId) {
@@ -430,14 +567,14 @@ export default function NewJobScreen() {
           .from('racquets')
           .update({
             head_size: editableRacquet.head_size,
-            weight_grams: editableRacquet.weight_grams, // Corrected column name
+            weight_grams: editableRacquet.weight_grams,
             balance_point: editableRacquet.balance_point,
             string_pattern: editableRacquet.string_pattern,
             stringing_notes: (editableRacquet.string_mains || editableRacquet.string_crosses)
               ? `Mains: ${editableRacquet.string_mains || ''}, Tension: ${editableRacquet.string_tension_mains || ''} lbs; Crosses: ${editableRacquet.string_crosses || ''}, Tension: ${editableRacquet.string_tension_crosses || ''} lbs.`
-              : editableRacquet.notes, // Or use a separate field for general notes
+              : null,
             last_stringing_date: editableRacquet.string_date || new Date().toISOString().split('T')[0],
-            notes: editableRacquet.notes // General racquet notes
+            notes: editableRacquet.notes // Save racquet notes
           })
           .eq('id', editableRacquet.id);
 
@@ -450,13 +587,14 @@ export default function NewJobScreen() {
         .insert([{
           client_id: selectedClientId,
           racquet_id: selectedRacquetId,
-          stringer_id: session.user.id, // stringer_id in jobs now points to public.stringers.id, which is auth.users.id
-          job_type: formData.job_type, // Use form data, which aligns with ENUM
-          job_status: formData.job_status, // Use form data, which aligns with ENUM
-          job_notes: editableRacquet?.notes || null // Using racquet notes as initial job notes
+          stringer_id: session.user.id,
+          job_type: formData.job_type,
+          job_status: formData.job_status,
+          job_notes: formData.job_notes || null, // Save client notes as job notes
+          due_date: formData.due_date || null
         }])
         .select()
-        .single(); // Ensure we get the new job's ID
+        .single();
 
       if (jobError) throw jobError;
       if (!jobData) {
@@ -499,122 +637,254 @@ export default function NewJobScreen() {
 
   const renderRacquetDetails = () => {
     if (!editableRacquet) return null;
+    console.log('Editable Racquet in renderRacquetDetails:', editableRacquet); // Debug log
+    console.log('Stringing Notes value:', editableRacquet?.stringing_notes); // New debug log for stringing notes
+
+    const selectedClient = clients.find(client => client.id === selectedClientId);
 
     return (
-      <View style={styles.racquetDetails}>
-        <View style={styles.row}>
-          <View style={[styles.inputGroup, styles.halfWidth]}>
-            <Text style={styles.label}>Head Size (sq in)</Text>
+      <View>
+        <View style={styles.racquetDetails}>
+          <View style={styles.row}>
+            <View style={[styles.inputGroup, styles.halfWidth]}>
+              <Text style={styles.label}>Head Size (sq in)</Text>
+              <TextInput
+                style={styles.input}
+                value={editableRacquet.head_size?.toString() || ''} // Convert number to string for TextInput
+                onChangeText={(value) => handleRacquetDetailChange('head_size', value)}
+                keyboardType="numeric"
+                placeholder="e.g. 100"
+              />
+            </View>
+
+            <View style={[styles.inputGroup, styles.halfWidth]}>
+              <Text style={styles.label}>Weight (g)</Text>
+              <TextInput
+                style={styles.input}
+                value={editableRacquet.weight_grams?.toString() || ''} // Use weight_grams, convert number to string
+                onChangeText={(value) => handleRacquetDetailChange('weight_grams', value)}
+                keyboardType="numeric"
+                placeholder="e.g. 300"
+              />
+            </View>
+          </View>
+          <View style={styles.row}>
+            {/* Racquet Info Section */}
+            {editableRacquet && (
+              <View style={styles.racquetInfo}>
+                <View style={styles.racquetNameContainer}>
+                  <Text style={styles.racquetName}>
+                    {editableRacquet.brand} {editableRacquet.model}
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
+
+          {/* Main String Selection */}
+          <View style={styles.row}>
+            {/* Main String Brand Dropdown */}
+            <View style={[styles.inputGroup, styles.halfWidth]}>
+              <Text style={styles.label}>Main String Brand</Text>
+              <SearchableDropdown
+                label="Select Brand"
+                items={stringBrands.map(brand => ({
+                  id: brand.id.toString(),
+                  label: brand.name,
+                  value: brand.id.toString(),
+                }))}
+                value={selectedMainBrandId?.toString() || ''}
+                onChange={value => {
+                  setSelectedMainBrandId(Number(value));
+                  setSelectedMainModelId(null);
+                  handleRacquetDetailChange('string_mains', ''); // Clear model name when brand changes
+                }}
+                searchFields={['label']}
+                placeholder="Select brand..."
+              />
+            </View>
+
+            {/* Main String Model Dropdown */}
+            <View style={[styles.inputGroup, styles.halfWidth]}>
+              <Text style={styles.label}>Main String Model</Text>
+              <SearchableDropdown
+                label="Select Model"
+                items={
+                  selectedMainBrandId
+                    ? stringModels
+                        .filter(model => model?.brand?.id === selectedMainBrandId)
+                        .map(model => ({
+                          id: model?.id?.toString() || '',
+                          label: model?.name || '', // Just use the model name
+                          value: model?.id?.toString() || '',
+                        }))
+                    : []
+                }
+                value={selectedMainModelId?.toString() || ''}
+                onChange={value => {
+                  const model = stringModels.find(m => m?.id?.toString() === value);
+                  if (model) {
+                    setSelectedMainModelId(model.id);
+                    // Combine brand and model names for display
+                    const brandName = stringBrands.find(b => b.id === model.brand?.id)?.name || '';
+                    handleRacquetDetailChange('string_mains', `${brandName} ${model.name}`);
+                  }
+                }}
+                searchFields={['label']}
+                placeholder="Select model..."
+                disabled={!selectedMainBrandId}
+              />
+            </View>
+          </View>
+
+          {/* Main Tension */}
+          <View style={styles.row}>
+            <View style={[styles.inputGroup, styles.halfWidth]}>
+              <Text style={styles.label}>Mains Tension (lbs)</Text>
+              <TextInput
+                style={styles.input}
+                keyboardType="numeric"
+                value={editableRacquet?.string_tension_mains?.toString() || (selectedClient?.default_tension_main?.toString() || '')}
+                onChangeText={value => handleRacquetDetailChange('string_tension_mains', Number(value))}
+                placeholder="Mains Tension"
+              />
+            </View>
+          </View>
+
+          {/* Cross String Selection */}
+          <View style={styles.row}>
+            {/* Cross String Brand Dropdown */}
+            <View style={[styles.inputGroup, styles.halfWidth]}>
+              <Text style={styles.label}>Cross String Brand</Text>
+              <SearchableDropdown
+                label="Select Brand"
+                items={stringBrands.map(brand => ({
+                  id: brand.id.toString(),
+                  label: brand.name,
+                  value: brand.id.toString(),
+                }))}
+                value={selectedCrossBrandId?.toString() || ''}
+                onChange={value => {
+                  setSelectedCrossBrandId(Number(value));
+                  setSelectedCrossModelId(null);
+                  handleRacquetDetailChange('string_crosses', ''); // Clear model name when brand changes
+                }}
+                searchFields={['label']}
+                placeholder="Select brand..."
+              />
+            </View>
+
+            {/* Cross String Model Dropdown */}
+            <View style={[styles.inputGroup, styles.halfWidth]}>
+              <Text style={styles.label}>Cross String Model</Text>
+              <SearchableDropdown
+                label="Select Model"
+                items={
+                  selectedCrossBrandId
+                    ? stringModels
+                        .filter(model => model?.brand?.id === selectedCrossBrandId)
+                        .map(model => ({
+                          id: model?.id?.toString() || '',
+                          label: model?.name || '', // Just use the model name
+                          value: model?.id?.toString() || '',
+                        }))
+                    : []
+                }
+                value={selectedCrossModelId?.toString() || ''}
+                onChange={value => {
+                  const model = stringModels.find(m => m?.id?.toString() === value);
+                  if (model) {
+                    setSelectedCrossModelId(model.id);
+                    // Combine brand and model names for display
+                    const brandName = stringBrands.find(b => b.id === model.brand?.id)?.name || '';
+                    handleRacquetDetailChange('string_crosses', `${brandName} ${model.name}`);
+                  }
+                }}
+                searchFields={['label']}
+                placeholder="Select model..."
+                disabled={!selectedCrossBrandId}
+              />
+            </View>
+          </View>
+
+          {/* Cross Tension */}
+          <View style={styles.row}>
+            <View style={[styles.inputGroup, styles.halfWidth]}>
+              <Text style={styles.label}>Crosses Tension (lbs)</Text>
+              <TextInput
+                style={styles.input}
+                keyboardType="numeric"
+                value={editableRacquet?.string_tension_crosses?.toString() || (selectedClient?.default_tension_cross?.toString() || '')}
+                onChangeText={value => handleRacquetDetailChange('string_tension_crosses', Number(value))}
+                placeholder="Crosses Tension"
+              />
+            </View>
+          </View>
+
+          {/* Racquet Notes */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Racquet Notes</Text>
             <TextInput
-              style={styles.input}
-              value={editableRacquet.head_size?.toString() || ''} // Convert number to string for TextInput
-              onChangeText={(value) => handleRacquetDetailChange('head_size', value)}
-              keyboardType="numeric"
-              placeholder="e.g. 100"
+              style={[styles.input, styles.textArea]}
+              value={editableRacquet?.notes || ''}
+              onChangeText={value => handleRacquetDetailChange('notes', value)}
+              placeholder="Any specific notes about this racquet..."
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
             />
           </View>
 
-          <View style={[styles.inputGroup, styles.halfWidth]}>
-            <Text style={styles.label}>Weight (g)</Text>
+          {/* Racquet Stringing Notes */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Stringing Notes</Text>
             <TextInput
-              style={styles.input}
-              value={editableRacquet.weight_grams?.toString() || ''} // Use weight_grams, convert number to string
-              onChangeText={(value) => handleRacquetDetailChange('weight_grams', value)} // Corrected field name
-              keyboardType="numeric"
-              placeholder="e.g. 300"
+              style={[styles.input, styles.textArea]}
+              value={editableRacquet?.stringing_notes || ''}
+              onChangeText={value => handleRacquetDetailChange('stringing_notes', value)}
+              placeholder="Stringing details and notes from this racquet..."
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
             />
           </View>
-        </View>
 
-        <View style={styles.row}>
-          <View style={[styles.inputGroup, styles.halfWidth]}>
-            <Text style={styles.label}>Balance Point (cm)</Text>
+          {/* Client's General Notes */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Client's General Notes</Text>
             <TextInput
-              style={styles.input}
-              value={editableRacquet.balance_point || ''}
-              onChangeText={(value) => handleRacquetDetailChange('balance_point', value)}
-              placeholder="e.g. 32.5"
+              style={[styles.input, styles.textArea]}
+              value={selectedClient?.notes || ''}
+              editable={false}
+              placeholder="No general notes from client..."
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
             />
           </View>
-          <View style={[styles.inputGroup, styles.halfWidth]}>
-            <Text style={styles.label}>String Pattern</Text>
-            <TextInput
-              style={styles.input}
-              value={editableRacquet.string_pattern || ''}
-              onChangeText={(value) => handleRacquetDetailChange('string_pattern', value)}
-              placeholder="e.g. 16x19"
-            />
-          </View>
-        </View>
 
-        <View style={styles.sectionTitleContainer}>
-          <Text style={styles.sectionSubtitle}>Current/Preferred String Details (on Racquet)</Text>
-        </View>
-
-        <View style={styles.row}>
-          <View style={[styles.inputGroup, styles.halfWidth]}>
-            <Text style={styles.label}>Mains String Name</Text>
-            <TextInput
-              style={styles.input}
-              value={editableRacquet.string_mains || ''}
-              onChangeText={(value) => handleRacquetDetailChange('string_mains', value)}
-              placeholder="e.g. Luxilon Alu Power"
-            />
+          {/* Date Field with Date Picker */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Due Date</Text>
+            <TouchableOpacity
+              style={styles.datePickerButton}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Text style={styles.datePickerButtonText}>
+                {selectedDate ? formatDateUS(selectedDate) : 'Select due date...'}
+              </Text>
+              <Ionicons name="calendar-outline" size={24} color="#666" />
+            </TouchableOpacity>
+            {showDatePicker && (
+              <DateTimePicker
+                value={selectedDate || new Date()}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={handleDateChange}
+                minimumDate={new Date()}
+              />
+            )}
           </View>
-          <View style={[styles.inputGroup, styles.halfWidth]}>
-            <Text style={styles.label}>Mains Tension (lbs)</Text>
-            <TextInput
-              style={styles.input}
-              value={editableRacquet.string_tension_mains?.toString() || ''} // Convert number to string
-              onChangeText={(value) => handleRacquetDetailChange('string_tension_mains', value)}
-              keyboardType="numeric"
-              placeholder="e.g. 52"
-            />
-          </View>
-        </View>
-
-        <View style={styles.row}>
-          <View style={[styles.inputGroup, styles.halfWidth]}>
-            <Text style={styles.label}>Crosses String Name</Text>
-            <TextInput
-              style={styles.input}
-              value={editableRacquet.string_crosses || ''}
-              onChangeText={(value) => handleRacquetDetailChange('string_crosses', value)}
-              placeholder="e.g. Natural Gut"
-            />
-          </View>
-          <View style={[styles.inputGroup, styles.halfWidth]}>
-            <Text style={styles.label}>Crosses Tension (lbs)</Text>
-            <TextInput
-              style={styles.input}
-              value={editableRacquet.string_tension_crosses?.toString() || ''} // Convert number to string
-              onChangeText={(value) => handleRacquetDetailChange('string_tension_crosses', value)}
-              keyboardType="numeric"
-              placeholder="e.g. 50"
-            />
-          </View>
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Last Stringing Date</Text>
-          <TextInput
-            style={styles.input}
-            value={editableRacquet.string_date || ''}
-            onChangeText={(value) => handleRacquetDetailChange('string_date', value)}
-            placeholder="YYYY-MM-DD"
-          />
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>General Racquet Notes</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            value={editableRacquet.notes || ''}
-            onChangeText={(value) => handleRacquetDetailChange('notes', value)}
-            placeholder="Enter any additional notes for this racquet"
-            multiline
-            numberOfLines={4}
-          />
         </View>
       </View>
     );
@@ -622,75 +892,82 @@ export default function NewJobScreen() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen
-        options={{
-          title: 'New Job',
-          headerLeft: () => (
-            <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color="#000" />
-            </TouchableOpacity>
-          ),
-        }}
-      />
-      <ScrollView style={styles.scrollView}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollViewContent}>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Client</Text>
+          {/* Client Selection */}
+          <View style={styles.sectionTitleContainer}>
+            <Text style={styles.sectionTitle}>Select Client</Text>
+          </View>
           <SearchableDropdown
-            label="Client"
-            items={clients.map(c => ({ id: c.id, label: c.full_name }))}
+            label="Select Client"
+            items={clients.map(client => ({
+              id: client.id,
+              label: client.full_name,
+              value: client.id,
+            }))}
             value={selectedClientId}
             onChange={handleClientSelect}
             searchFields={['label']}
-            placeholder="Select a client..."
-            required
+            placeholder="Search clients..."
           />
-        </View>
 
-        {selectedClientId && clientRacquets.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Racquet</Text>
-            {clientRacquets.length === 1 ? (
-              <View style={styles.racquetInfo}>
-                <View style={styles.racquetNameContainer}>
-                  <Text style={styles.racquetName}>
-                    {`${clientRacquets[0].brand} ${clientRacquets[0].model}`}
-                  </Text>
-                </View>
-                {renderRacquetDetails()}
+          {/* Racquet Selection */}
+          {selectedClientId && (
+            <>
+              <View style={styles.sectionTitleContainer}>
+                <Text style={styles.sectionTitle}>Select Racquet</Text>
               </View>
-            ) : (
-              <View>
-                <SearchableDropdown
-                  label="Racquet"
-                  items={clientRacquets.map(r => ({ id: r.id, label: `${r.brand} ${r.model}` }))}
-                  value={selectedRacquetId}
-                  onChange={(id) => {
-                    const racquet = clientRacquets.find(r => r.id === id);
-                    if (racquet) handleRacquetSelect(racquet);
-                  }}
-                  searchFields={['label']}
-                  placeholder="Select a racquet..."
-                  required
-                />
-                {selectedRacquetId && renderRacquetDetails()}
+              <View style={styles.racquetList}>
+                {clientRacquets.map(racquet => (
+                  <TouchableOpacity
+                    key={racquet.id}
+                    style={[
+                      styles.racquetItem,
+                      selectedRacquetId === racquet.id && styles.racquetItemSelected
+                    ]}
+                    onPress={() => handleRacquetSelect(racquet)}
+                  >
+                    <Text style={styles.racquetItemText}>
+                      {racquet.brand} {racquet.model}
+                    </Text>
+                    {racquet.head_size && (
+                      <Text style={styles.racquetItemDetail}>
+                        Head Size: {racquet.head_size} sq in
+                      </Text>
+                    )}
+                    {racquet.weight_grams && (
+                      <Text style={styles.racquetItemDetail}>
+                        Weight: {racquet.weight_grams}g
+                      </Text>
+                    )}
+                    {racquet.string_pattern && (
+                      <Text style={styles.racquetItemDetail}>
+                        Pattern: {racquet.string_pattern}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                ))}
               </View>
-            )}
-          </View>
-        )}
+            </>
+          )}
 
-        {selectedRacquetId && (
+          {/* Racquet Details */}
+          {renderRacquetDetails()}
+
+          {/* Submit Button */}
           <TouchableOpacity
             style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
             onPress={handleSubmit}
             disabled={isLoading}
           >
             <Text style={styles.submitButtonText}>
-              {isLoading ? 'Creating Job...' : 'Create Job'}
+              {isLoading ? 'Creating...' : 'Create Job'}
             </Text>
           </TouchableOpacity>
-        )}
+        </View>
       </ScrollView>
 
+      {/* Custom Alert */}
       <CustomAlert
         visible={alertVisible}
         title={alertTitle}
@@ -708,6 +985,10 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  scrollViewContent: {
+    flexGrow: 1,
+    paddingBottom: 100,
   },
   closeButton: {
     padding: 8,
@@ -782,6 +1063,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     margin: 16,
     alignItems: 'center',
+    marginBottom: 32,
   },
   submitButtonDisabled: {
     opacity: 0.5,
@@ -790,5 +1072,44 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  racquetList: {
+    marginTop: 8,
+  },
+  racquetItem: {
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: '#fff',
+  },
+  racquetItemSelected: {
+    borderColor: '#007AFF',
+    backgroundColor: '#f0f8ff',
+  },
+  racquetItemText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  racquetItemDetail: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  datePickerButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#fff',
+  },
+  datePickerButtonText: {
+    fontSize: 16,
+    color: '#333',
   },
 });

@@ -180,17 +180,19 @@ export default function NewRacquetScreen() {
       />
       
       <ScrollView style={styles.form}>
-        <View style={styles.section}>
-          <Text style={styles.label}>Client</Text>
-          <SearchableDropdown
-            label="Select Client"
-            items={clients.map(client => ({ id: client.id, label: client.full_name }))}
-            value={selectedClientId}
-            onChange={setSelectedClientId}
-            searchFields={['label']}
-            placeholder="Select a client..."
-            required
-          />
+        <View>
+          <View style={styles.section}>
+            <Text style={styles.label}>Client</Text>
+            <SearchableDropdown
+              label="Select Client"
+              items={clients.map(client => ({ id: client.id, label: client.full_name }))}
+              value={selectedClientId}
+              onChange={setSelectedClientId}
+              searchFields={['label']}
+              placeholder="Select a client..."
+              required
+            />
+          </View>
         </View>
 
         <View style={styles.section}>

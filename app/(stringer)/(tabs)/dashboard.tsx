@@ -19,6 +19,7 @@ export default function DashboardScreen() {
     stringStock: 0,
   });
   const [error, setError] = useState<string | null>(null);
+  const [shopName, setShopName] = useState<string | null>(null);
 
   // Fetch dashboard data
   useEffect(() => {
@@ -29,6 +30,20 @@ export default function DashboardScreen() {
       setError(null);
       
       try {
+        // Fetch shop name from stringers table
+        const { data: stringerProfile, error: stringerError } = await supabase
+          .from('stringers')
+          .select('shop_name')
+          .eq('user_id', user.id)
+          .single();
+
+        if (stringerError) {
+          console.error('Error fetching stringer profile:', stringerError);
+          // Don't throw, as other dashboard data might still load
+        } else if (stringerProfile) {
+          setShopName(stringerProfile.shop_name);
+        }
+
         // Fetch active jobs
         const { count: activeJobs } = await supabase
           .from('jobs')
@@ -91,7 +106,7 @@ export default function DashboardScreen() {
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.welcomeText}>Welcome back,</Text>
-        <Text style={styles.userName}>{user?.user_metadata?.name || 'Stringer'}</Text>
+        <Text style={styles.userName}>{shopName || user?.user_metadata?.name || 'Stringer'}</Text>
       </View>
 
       <View style={styles.statsContainer}>

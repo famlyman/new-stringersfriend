@@ -1,5 +1,5 @@
 // app/(stringer)/(tabs)/jobs/_layout.tsx
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function JobsLayout() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   return (
     <Stack
@@ -29,7 +30,7 @@ export default function JobsLayout() {
         name="new"
         options={{
           headerShown: true,
-          title: 'New String Job',
+          title: 'New Job',
           presentation: 'modal',
           headerStyle: {
             backgroundColor: '#fff',
@@ -43,6 +44,11 @@ export default function JobsLayout() {
             fontSize: 17,
           },
           headerTitleAlign: 'center',
+          headerLeft: () => (
+            <Pressable onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={24} color="#007AFF" />
+            </Pressable>
+          ),
         }}
       />
       <Stack.Screen

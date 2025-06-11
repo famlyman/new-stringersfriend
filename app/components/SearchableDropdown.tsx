@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 type DropdownItem = {
   id: string;
   label: string;
+  value?: string;
   [key: string]: any;
 };
 
@@ -21,6 +22,7 @@ interface SearchableDropdownProps {
   items: Array<{
     id: string;
     label: string;
+    value?: string;
     [key: string]: any;
   }>;
   value: string;
@@ -43,6 +45,12 @@ export default function SearchableDropdown({
 }: SearchableDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Debug logs for SearchableDropdown
+  console.log(`SearchableDropdown: Label: ${label}, Value: ${value}`);
+  console.log(`SearchableDropdown: Items:`, items);
+  const selectedItem = items.find(item => item.id === value);
+  console.log(`SearchableDropdown: Selected Item:`, selectedItem);
 
   const filteredItems = items.filter(item => {
     if (!searchQuery) return true;
@@ -72,7 +80,7 @@ export default function SearchableDropdown({
           !value && styles.placeholder,
           disabled && styles.textDisabled
         ]}>
-          {value ? items.find(item => item.id === value)?.label : placeholder}
+          {selectedItem?.label || placeholder}
         </Text>
         <Ionicons
           name={isOpen ? 'chevron-up' : 'chevron-down'}

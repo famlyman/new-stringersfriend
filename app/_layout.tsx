@@ -134,8 +134,10 @@ export default function RootLayout() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0000ff" />
-        <Text style={{ marginTop: 20 }}>Loading app...</Text>
+        <>
+          <ActivityIndicator size="large" color="#0000ff" />
+          <Text style={{ marginTop: 20 }}>Loading app...</Text>
+        </>
       </View>
     );
   }

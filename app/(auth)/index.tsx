@@ -81,67 +81,69 @@ export default function WelcomeScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Welcome to Stringer's Friend</Text>
-        <Text style={styles.subtitle}>Your all-in-one racquet stringing management solution</Text>
-      </View>
+      <View>
+        <View style={styles.header}>
+          <Text style={styles.title}>Welcome to Stringer's Friend</Text>
+          <Text style={styles.subtitle}>Your all-in-one racquet stringing management solution</Text>
+        </View>
 
-      <View style={styles.featuresContainer}>
-        <Text style={styles.sectionTitle}>Choose Your Path:</Text>
-        
-        <TouchableOpacity
-          style={[styles.featureCard, styles.stringerCard]}
-          onPress={() => selectRole('stringer')}
-          disabled={selectingRole}
-        >
-          <Text style={styles.featureTitle}>For Stringers</Text>
-          <Text style={styles.featureDescription}>
-            • Manage your stringing business efficiently{'\n'}
-            • Track jobs, clients, and inventory{'\n'}
-            • Set up your stringing shop profile{'\n'}
-            • Handle payments and scheduling
-          </Text>
-          <View style={styles.cardFooter}>
-            <Text style={styles.getStartedText}>Get Started</Text>
-            {selectingRole && <ActivityIndicator color="#28A745" style={styles.roleLoading} />}
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.featureCard, styles.customerCard]}
-          onPress={() => selectRole('customer')}
-          disabled={selectingRole}
-        >
-          <Text style={styles.featureTitle}>For Customers</Text>
-          <Text style={styles.featureDescription}>
-            • Find local stringers{'\n'}
-            • Track your racquets{'\n'}
-            • Manage stringing preferences{'\n'}
-            • Get status updates on your jobs
-          </Text>
-          <View style={styles.cardFooter}>
-            <Text style={styles.getStartedText}>Get Started</Text>
-            {selectingRole && <ActivityIndicator color="#666" style={styles.roleLoading} />}
-          </View>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.authContainer}>
-        {session ? (
+        <View style={styles.featuresContainer}>
+          <Text style={styles.sectionTitle}>Choose Your Path:</Text>
+          
           <TouchableOpacity
-            style={styles.authButton}
-            onPress={handleSignOut}
+            style={[styles.featureCard, styles.stringerCard]}
+            onPress={() => selectRole('stringer')}
+            disabled={selectingRole}
           >
-            <Text style={styles.authButtonText}>Sign Out</Text>
+            <Text style={styles.featureTitle}>For Stringers</Text>
+            <Text style={styles.featureDescription}>
+              • Manage your stringing business efficiently{'\n'}
+              • Track jobs, clients, and inventory{'\n'}
+              • Set up your stringing shop profile{'\n'}
+              • Handle payments and scheduling
+            </Text>
+            <View style={styles.cardFooter}>
+              <Text style={styles.getStartedText}>Get Started</Text>
+              {selectingRole && <ActivityIndicator color="#28A745" style={styles.roleLoading} />}
+            </View>
           </TouchableOpacity>
-        ) : (
+
           <TouchableOpacity
-            style={styles.authButton}
-            onPress={() => router.replace('/(auth)/login')}
+            style={[styles.featureCard, styles.customerCard]}
+            onPress={() => selectRole('customer')}
+            disabled={selectingRole}
           >
-            <Text style={styles.authButtonText}>Already have an account? Sign In</Text>
+            <Text style={styles.featureTitle}>For Customers</Text>
+            <Text style={styles.featureDescription}>
+              • Find local stringers{'\n'}
+              • Track your racquets{'\n'}
+              • Manage stringing preferences{'\n'}
+              • Get status updates on your jobs
+            </Text>
+            <View style={styles.cardFooter}>
+              <Text style={styles.getStartedText}>Get Started</Text>
+              {selectingRole && <ActivityIndicator color="#666" style={styles.roleLoading} />}
+            </View>
           </TouchableOpacity>
-        )}
+        </View>
+
+        <View style={styles.authContainer}>
+          {session ? (
+            <TouchableOpacity
+              style={styles.authButton}
+              onPress={handleSignOut}
+            >
+              <Text style={styles.authButtonText}>Sign Out</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.authButton}
+              onPress={() => router.replace('/(auth)/login')}
+            >
+              <Text style={styles.authButtonText}>Already have an account? Sign In</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     </ScrollView>
   );

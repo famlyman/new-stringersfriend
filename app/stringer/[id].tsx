@@ -54,13 +54,15 @@ export default function StringerStorefront() {
 
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Image
-          source={{ uri: stringer.avatar_url || 'https://via.placeholder.com/150' }}
-          style={styles.avatar}
-        />
-        <Text style={styles.businessName}>{stringer.shop_name}</Text>
-        <Text style={styles.location}>{stringer.business_address}</Text>
+      <View>
+        <View style={styles.header}>
+          <Image
+            source={{ uri: stringer.avatar_url || 'https://via.placeholder.com/150' }}
+            style={styles.avatar}
+          />
+          <Text style={styles.businessName}>{stringer.shop_name}</Text>
+          <Text style={styles.location}>{stringer.business_address}</Text>
+        </View>
       </View>
 
       <View style={styles.navigation}>
