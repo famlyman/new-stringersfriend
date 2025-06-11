@@ -34,7 +34,7 @@ export default function DashboardScreen() {
         const { data: stringerProfile, error: stringerError } = await supabase
           .from('stringers')
           .select('shop_name')
-          .eq('user_id', user.id)
+          .eq('id', user.id)
           .single();
 
         if (stringerError) {
