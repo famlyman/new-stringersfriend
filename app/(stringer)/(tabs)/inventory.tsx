@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Link } from 'expo-router';
 import { useAuth } from '../../../src/contexts/AuthContext';
 import { supabase } from '../../../src/lib/supabase';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type StringInventory = {
   id: string;
@@ -166,7 +167,7 @@ export default function InventoryScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top','left','right']}>
       <View style={styles.header}>
         <Text style={styles.title}>String Inventory</Text>
         <Link href="/(stringer)/inventory/new" asChild>
@@ -210,7 +211,7 @@ export default function InventoryScreen() {
           </Link>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 

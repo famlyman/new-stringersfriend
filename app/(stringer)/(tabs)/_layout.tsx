@@ -48,6 +48,7 @@ export default function StringerTabsLayout() {
             tabBarIcon: ({ color }) => (
               <FontAwesome name="home" size={24} color={color} />
             ),
+            headerShown: false,
           }}
         />
         <Tabs.Screen
@@ -57,6 +58,7 @@ export default function StringerTabsLayout() {
             tabBarIcon: ({ color }) => (
               <FontAwesome name="list" size={24} color={color} />
             ),
+            headerShown: false,
           }}
         />
         <Tabs.Screen
@@ -66,6 +68,7 @@ export default function StringerTabsLayout() {
             tabBarIcon: ({ color }) => (
               <FontAwesome name="cube" size={24} color={color} />
             ),
+            headerShown: false,
           }}
         />
         <Tabs.Screen
@@ -75,6 +78,7 @@ export default function StringerTabsLayout() {
             tabBarIcon: ({ color }) => (
               <FontAwesome name="users" size={24} color={color} />
             ),
+            headerShown: false,
           }}
         />
         <Tabs.Screen
@@ -84,6 +88,7 @@ export default function StringerTabsLayout() {
             tabBarIcon: ({ color }) => (
               <FontAwesome name="cog" size={24} color={color} />
             ),
+            headerShown: false,
           }}
         />
         <Tabs.Screen

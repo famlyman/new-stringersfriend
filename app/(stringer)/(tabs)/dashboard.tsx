@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-nat
 import { useAuth } from '../../../src/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../../src/lib/supabase';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface DashboardStats {
   activeJobs: number;
@@ -103,34 +104,36 @@ export default function DashboardScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.welcomeText}>Welcome back,</Text>
-        <Text style={styles.userName}>{shopName || user?.user_metadata?.name || 'Stringer'}</Text>
-      </View>
+    <SafeAreaView style={styles.container} edges={['top','left','right']}>
+      <ScrollView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.welcomeText}>Welcome back,</Text>
+          <Text style={styles.userName}>{shopName || user?.user_metadata?.name || 'Stringer'}</Text>
+        </View>
 
-      <View style={styles.statsContainer}>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{stats.activeJobs}</Text>
-          <Text style={styles.statLabel}>Active Jobs</Text>
+        <View style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{stats.activeJobs}</Text>
+            <Text style={styles.statLabel}>Active Jobs</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{stats.totalClients}</Text>
+            <Text style={styles.statLabel}>Clients</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{stats.stringStock}</Text>
+            <Text style={styles.statLabel}>Strings in Stock</Text>
+          </View>
         </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{stats.totalClients}</Text>
-          <Text style={styles.statLabel}>Clients</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{stats.stringStock}</Text>
-          <Text style={styles.statLabel}>Strings in Stock</Text>
-        </View>
-      </View>
 
-      <View style={styles.upcomingContainer}>
-        <Text style={styles.sectionTitle}>Upcoming Jobs</Text>
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyStateText}>No upcoming jobs</Text>
+        <View style={styles.upcomingContainer}>
+          <Text style={styles.sectionTitle}>Upcoming Jobs</Text>
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateText}>No upcoming jobs</Text>
+          </View>
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -180,7 +183,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 20,
     gap: 10,
-    marginTop: -20,
+    marginTop: 20,
   },
   statCard: {
     flex: 1,

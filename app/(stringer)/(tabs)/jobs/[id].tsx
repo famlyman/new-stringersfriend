@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { JobStatus, statusConfig } from '../../../../src/types/job';
 import { supabase } from '../../../../src/lib/supabase';
 import { useAuth } from '../../../../src/contexts/AuthContext';
@@ -274,199 +274,206 @@ export default function JobDetailScreen() {
         }} 
       />
       
-      <ScrollView style={[styles.scrollContainer, { paddingBottom: 84 + insets.bottom }]}>
-        <View style={styles.header}>
-          <View style={styles.statusBadge}>
-            <View style={[styles.statusIndicator, { backgroundColor: statusInfo.color }]} />
-            <Text style={[styles.statusText, { color: statusInfo.color }]}>
-              {statusInfo.label}
-            </Text>
-          </View>
-          <Text style={styles.price}>${stringingDetails?.price?.toFixed(2) || '0.00'}</Text>
-        </View>
-        
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Client</Text>
-          <TouchableOpacity 
-            style={styles.infoCard}
-            onPress={() => {
-              if (job.client && job.client.length > 0) {
-                console.log('Navigating to client ID:', job.client[0].id);
-                router.push(`/(stringer)/clients/${job.client[0].id}`);
-              }
-            }}
-          >
-            <View style={styles.infoIcon}>
-              <Ionicons name="person-outline" size={20} color="#007AFF" />
-            </View>
-            <View style={styles.infoContent}>
-              <Text style={styles.infoTitle}>{job.client?.[0]?.full_name || 'N/A'}</Text>
-              <Text style={styles.infoSubtitle}>View client details</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#999" />
-          </TouchableOpacity>
-        </View>
-        
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Racquet</Text>
-          <TouchableOpacity 
-            style={styles.infoCard}
-            onPress={() => {
-              if (job.racquet && job.racquet.length > 0) {
-                console.log('Navigating to racquet ID:', job.racquet[0].id);
-                router.push(`/(stringer)/racquets/${job.racquet[0].id}`);
-              }
-            }}
-          >
-            <View style={[styles.infoIcon, { backgroundColor: '#E3F2FD' }]}>
-              <Ionicons name="tennisball-outline" size={20} color="#1976D2" />
-            </View>
-            <View style={styles.infoContent}>
-              <Text style={styles.infoTitle}>{job.racquet?.[0]?.brand?.[0]?.name || 'N/A'} {job.racquet?.[0]?.model?.[0]?.name || 'N/A'}</Text>
-              <Text style={styles.infoSubtitle}>View racquet details</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#999" />
-          </TouchableOpacity>
-        </View>
-        
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Stringing Details</Text>
-          <View style={styles.detailsGrid}>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Main String</Text>
-              <Text style={styles.detailValue}>{stringingDetails?.main_string_model?.[0]?.name || 'N/A'}</Text>
-            </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Cross String</Text>
-              <Text style={styles.detailValue}>{stringingDetails?.cross_string_model?.[0]?.name || 'N/A'}</Text>
-            </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Tension (Mains)</Text>
-              <Text style={styles.detailValue}>{stringingDetails?.tension_main || 'N/A'} lbs</Text>
-            </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Tension (Crosses)</Text>
-              <Text style={styles.detailValue}>{stringingDetails?.tension_cross || 'N/A'} lbs</Text>
-            </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Due Date</Text>
-              <Text style={styles.detailValue}>
-                {job.due_date ? new Date(job.due_date).toLocaleDateString() : 'N/A'}
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom', 'left', 'right']}>
+        <ScrollView 
+          style={styles.scrollView} 
+          contentContainerStyle={styles.scrollViewContent}
+          automaticallyAdjustKeyboardInsets={false}
+          automaticallyAdjustsScrollIndicatorInsets={false}
+        >
+          <View style={styles.header}>
+            <View style={styles.statusBadge}>
+              <View style={[styles.statusIndicator, { backgroundColor: statusInfo.color }]} />
+              <Text style={[styles.statusText, { color: statusInfo.color }]}>
+                {statusInfo.label}
               </Text>
             </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Completed Date</Text>
-              <Text style={styles.detailValue}>
-                {job.completed_date ? new Date(job.completed_date).toLocaleDateString() : 'N/A'}
-              </Text>
-            </View>
+            <Text style={styles.price}>${stringingDetails?.price?.toFixed(2) || '0.00'}</Text>
           </View>
-        </View>
-        
-        {job.job_notes && (
+          
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Notes</Text>
-            <View style={styles.notesCard}>
-              <Text style={styles.notesText}>{job.job_notes}</Text>
+            <Text style={styles.sectionTitle}>Client</Text>
+            <TouchableOpacity 
+              style={styles.infoCard}
+              onPress={() => {
+                if (job.client && job.client.length > 0) {
+                  console.log('Navigating to client ID:', job.client[0].id);
+                  router.push(`/(stringer)/clients/${job.client[0].id}`);
+                }
+              }}
+            >
+              <View style={styles.infoIcon}>
+                <Ionicons name="person-outline" size={20} color="#007AFF" />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoTitle}>{job.client?.[0]?.full_name || 'N/A'}</Text>
+                <Text style={styles.infoSubtitle}>View client details</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#999" />
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Racquet</Text>
+            <TouchableOpacity 
+              style={styles.infoCard}
+              onPress={() => {
+                if (job.racquet && job.racquet.length > 0) {
+                  console.log('Navigating to racquet ID:', job.racquet[0].id);
+                  router.push(`/(stringer)/racquets/${job.racquet[0].id}`);
+                }
+              }}
+            >
+              <View style={[styles.infoIcon, { backgroundColor: '#E3F2FD' }]}>
+                <Ionicons name="tennisball-outline" size={20} color="#1976D2" />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoTitle}>{job.racquet?.[0]?.brand?.[0]?.name || 'N/A'} {job.racquet?.[0]?.model?.[0]?.name || 'N/A'}</Text>
+                <Text style={styles.infoSubtitle}>View racquet details</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#999" />
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Stringing Details</Text>
+            <View style={styles.detailsGrid}>
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Main String</Text>
+                <Text style={styles.detailValue}>{stringingDetails?.main_string_model?.[0]?.name || 'N/A'}</Text>
+              </View>
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Cross String</Text>
+                <Text style={styles.detailValue}>{stringingDetails?.cross_string_model?.[0]?.name || 'N/A'}</Text>
+              </View>
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Tension (Mains)</Text>
+                <Text style={styles.detailValue}>{stringingDetails?.tension_main || 'N/A'} lbs</Text>
+              </View>
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Tension (Crosses)</Text>
+                <Text style={styles.detailValue}>{stringingDetails?.tension_cross || 'N/A'} lbs</Text>
+              </View>
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Due Date</Text>
+                <Text style={styles.detailValue}>
+                  {job.due_date ? new Date(job.due_date).toLocaleDateString() : 'N/A'}
+                </Text>
+              </View>
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Completed Date</Text>
+                <Text style={styles.detailValue}>
+                  {job.completed_date ? new Date(job.completed_date).toLocaleDateString() : 'N/A'}
+                </Text>
+              </View>
             </View>
+          </View>
+          
+          {job.job_notes && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Notes</Text>
+              <View style={styles.notesCard}>
+                <Text style={styles.notesText}>{job.job_notes}</Text>
+              </View>
+            </View>
+          )}
+          
+          <View style={styles.timeline}>
+            {statusFlow.map((status, index) => {
+              const isCompleted = statusFlow.indexOf(job.job_status) >= index;
+              const isCurrent = job.job_status === status;
+              const config = statusConfig[status];
+              
+              return (
+                <View key={status} style={styles.timelineItem}>
+                  <View style={[
+                    styles.timelineDot,
+                    {
+                      backgroundColor: isCompleted ? config.color : '#E0E0E0',
+                      borderColor: isCurrent ? config.color : 'transparent',
+                    }
+                  ]}>
+                    <Ionicons 
+                      name={config.icon} 
+                      size={14} 
+                      color={isCompleted ? '#fff' : '#999'} 
+                    />
+                  </View>
+                  <View style={styles.timelineContent}>
+                    <Text style={[ 
+                      styles.timelineTitle,
+                      { color: isCompleted ? '#1a1a1a' : '#999' }
+                    ]}>
+                      {config.label}
+                    </Text>
+                    {/* Safely access date properties based on status, using optional chaining and specific properties */}
+                    {status === 'pending' && job.created_at && (
+                      <Text style={styles.timelineDate}>
+                        {new Date(job.created_at).toLocaleString()}
+                      </Text>
+                    )}
+                    {status === 'in_progress' && job.updated_at && (
+                      <Text style={styles.timelineDate}>
+                        {new Date(job.updated_at).toLocaleString()}
+                      </Text>
+                    )}
+                    {status === 'completed' && job.completed_date && (
+                      <Text style={styles.timelineDate}>
+                        {new Date(job.completed_date).toLocaleString()}
+                      </Text>
+                    )}
+                    {status === 'picked_up' && job.updated_at && (
+                      <Text style={styles.timelineDate}>
+                        {new Date(job.updated_at).toLocaleString()}
+                      </Text>
+                    )}
+                  </View>
+                  {index < statusFlow.length - 1 && (
+                    <View 
+                      style={[
+                        styles.timelineLine,
+                        {
+                          backgroundColor: isCompleted ? config.color : '#E0E0E0',
+                          opacity: isCompleted ? 1 : 0.5,
+                        }
+                      ]} 
+                    />
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        </ScrollView>
+        
+        {nextStatus && (
+          <View style={[styles.footer, { bottom: insets.bottom }]}>
+            <TouchableOpacity 
+              style={[
+                styles.actionButton,
+                { backgroundColor: statusConfig[nextStatus].color }
+              ]}
+              onPress={() => updateStatus(nextStatus)}
+              disabled={updating}
+            >
+              {updating ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons 
+                    name={statusConfig[nextStatus].icon} 
+                    size={20} 
+                    color="#fff" 
+                    style={styles.actionIcon}
+                  />
+                  <Text style={styles.actionText}>
+                    Mark as {statusConfig[nextStatus].label}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
         )}
-        
-        <View style={styles.timeline}>
-          {statusFlow.map((status, index) => {
-            const isCompleted = statusFlow.indexOf(job.job_status) >= index;
-            const isCurrent = job.job_status === status;
-            const config = statusConfig[status];
-            
-            return (
-              <View key={status} style={styles.timelineItem}>
-                <View style={[
-                  styles.timelineDot,
-                  {
-                    backgroundColor: isCompleted ? config.color : '#E0E0E0',
-                    borderColor: isCurrent ? config.color : 'transparent',
-                  }
-                ]}>
-                  <Ionicons 
-                    name={config.icon} 
-                    size={14} 
-                    color={isCompleted ? '#fff' : '#999'} 
-                  />
-                </View>
-                <View style={styles.timelineContent}>
-                  <Text style={[ 
-                    styles.timelineTitle,
-                    { color: isCompleted ? '#1a1a1a' : '#999' }
-                  ]}>
-                    {config.label}
-                  </Text>
-                  {/* Safely access date properties based on status, using optional chaining and specific properties */}
-                  {status === 'pending' && job.created_at && (
-                    <Text style={styles.timelineDate}>
-                      {new Date(job.created_at).toLocaleString()}
-                    </Text>
-                  )}
-                  {status === 'in_progress' && job.updated_at && (
-                    <Text style={styles.timelineDate}>
-                      {new Date(job.updated_at).toLocaleString()}
-                    </Text>
-                  )}
-                  {status === 'completed' && job.completed_date && (
-                    <Text style={styles.timelineDate}>
-                      {new Date(job.completed_date).toLocaleString()}
-                    </Text>
-                  )}
-                  {status === 'picked_up' && job.updated_at && (
-                    <Text style={styles.timelineDate}>
-                      {new Date(job.updated_at).toLocaleString()}
-                    </Text>
-                  )}
-                </View>
-                {index < statusFlow.length - 1 && (
-                  <View 
-                    style={[
-                      styles.timelineLine,
-                      {
-                        backgroundColor: isCompleted ? config.color : '#E0E0E0',
-                        opacity: isCompleted ? 1 : 0.5,
-                      }
-                    ]} 
-                  />
-                )}
-              </View>
-            );
-          })}
-        </View>
-      </ScrollView>
-      
-      {nextStatus && (
-        <View style={[styles.footer, { bottom: insets.bottom }]}>
-          <TouchableOpacity 
-            style={[
-              styles.actionButton,
-              { backgroundColor: statusConfig[nextStatus].color }
-            ]}
-            onPress={() => updateStatus(nextStatus)}
-            disabled={updating}
-          >
-            {updating ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <>
-                <Ionicons 
-                  name={statusConfig[nextStatus].icon} 
-                  size={20} 
-                  color="#fff" 
-                  style={styles.actionIcon}
-                />
-                <Text style={styles.actionText}>
-                  Mark as {statusConfig[nextStatus].label}
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
-      )}
+      </SafeAreaView>
     </View>
   );
 }
@@ -474,13 +481,13 @@ export default function JobDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#f5f5f5',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#fff',
   },
   emptyContainer: {
     flex: 1,
@@ -495,14 +502,12 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 16,
   },
-  scrollContainer: {
+  scrollView: {
     flex: 1,
-    padding: 16,
-    marginBottom: 8
   },
-  menuButton: {
-    padding: 8,
-    marginRight: 8,
+  scrollViewContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 100, // Ensure content is not hidden by the tab bar
   },
   header: {
     flexDirection: 'row',
@@ -521,53 +526,58 @@ const styles = StyleSheet.create({
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
   },
   statusIndicator: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     marginRight: 8,
   },
   statusText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    textTransform: 'capitalize',
   },
   price: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1a1a1a',
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#333',
   },
   section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#666',
-    marginBottom: 12,
-    paddingLeft: 8,
-  },
-  infoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
+    marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 3,
     elevation: 1,
   },
-  infoIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f0f7ff',
-    justifyContent: 'center',
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+  },
+  infoCard: {
+    flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#f8f8f8',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 8,
+  },
+  infoIcon: {
+    backgroundColor: '#E8F5E9',
+    borderRadius: 20,
+    padding: 8,
     marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   infoContent: {
     flex: 1,
@@ -575,26 +585,25 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1a1a1a',
-    marginBottom: 2,
+    color: '#333',
   },
   infoSubtitle: {
-    fontSize: 14,
-    color: '#999',
+    fontSize: 13,
+    color: '#666',
+    marginTop: 2,
   },
   detailsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginHorizontal: -6,
-    marginBottom: 8,
+    justifyContent: 'space-between',
   },
   detailItem: {
-    width: '50%',
-    padding: 6,
+    width: '48%', // Approximately half width for two columns
+    marginBottom: 12,
   },
   detailLabel: {
     fontSize: 13,
-    color: '#999',
+    color: '#888',
     marginBottom: 4,
   },
   detailValue: {
@@ -603,9 +612,9 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   notesCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: '#f8f8f8',
+    borderRadius: 10,
+    padding: 12,
   },
   notesText: {
     fontSize: 15,
@@ -613,45 +622,54 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   timeline: {
-    marginTop: 8,
-    marginBottom: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
   },
   timelineItem: {
-    position: 'relative',
-    paddingLeft: 32,
-    marginBottom: 20,
-    minHeight: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
   },
   timelineDot: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: 'center',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 15,
     borderWidth: 2,
     borderColor: 'transparent',
   },
   timelineContent: {
-    paddingTop: 2,
+    flex: 1,
   },
   timelineTitle: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontSize: 16,
+    fontWeight: 'bold',
     marginBottom: 2,
   },
   timelineDate: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#999',
   },
   timelineLine: {
     position: 'absolute',
-    left: 13,
-    top: 28,
-    bottom: -20,
+    left: 11,
+    top: 24,
+    bottom: -10,
     width: 2,
+    backgroundColor: '#E0E0E0',
+  },
+  menuButton: {
+    marginRight: 15,
   },
   footer: {
     position: 'absolute',

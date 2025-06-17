@@ -23,6 +23,11 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
+      },
+      "softwareKeyboardLayoutMode": "pan",
+      "statusBar": {
+        "translucent": false,
+        "backgroundColor": "#FFFFFF"
       }
     },
     "web": {

@@ -4,6 +4,7 @@ import { useAuth } from '../../../src/contexts/AuthContext';
 import { supabase } from '../../../src/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { Link, useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Client = {
   id: string;
@@ -102,7 +103,7 @@ export default function ClientsScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top','left','right']}>
       <View style={styles.header}>
         <Text style={styles.title}>Clients</Text>
         <Link href="/(stringer)/clients/new" asChild>
@@ -126,7 +127,7 @@ export default function ClientsScreen() {
           <Text style={styles.emptyStateSubtext}>Add your first client to get started</Text>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 

@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../../../../src/contexts/AuthContext';
 import { supabase } from '../../../../src/lib/supabase';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { JobStatus, statusConfig, Job as JobBase } from '../../../../src/types/job';
 
 interface JobWithClient extends Omit<JobBase, 'client'> {
@@ -128,7 +128,7 @@ export default function JobsScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top','left','right']}>
       <View style={styles.header}>
         <Text style={styles.title}>Jobs</Text>
         <Link href="/(stringer)/(tabs)/jobs/new" asChild>
@@ -168,7 +168,7 @@ export default function JobsScreen() {
           </Link>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 

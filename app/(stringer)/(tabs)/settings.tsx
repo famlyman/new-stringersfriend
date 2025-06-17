@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useAuth } from '../../../src/contexts/AuthContext';
 import { FontAwesome } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
   const { signOut } = useAuth();
@@ -16,7 +16,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top','left','right']}>
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={[
@@ -61,7 +61,7 @@ export default function SettingsScreen() {
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
