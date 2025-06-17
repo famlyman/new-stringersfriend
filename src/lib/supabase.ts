@@ -14,15 +14,12 @@ if (Platform.OS === 'web') {
   // We're creating an object that mimics the SecureStore interface.
   storageAdapter = {
     getItem: async (key: string) => {
-      console.log(`[Web Storage] getItem: ${key}`);
       return localStorage.getItem(key);
     },
     setItem: async (key: string, value: string) => {
-      console.log(`[Web Storage] setItem: ${key}`);
       localStorage.setItem(key, value);
     },
     removeItem: async (key: string) => {
-      console.log(`[Web Storage] removeItem: ${key}`);
       localStorage.removeItem(key);
     },
   };
@@ -37,7 +34,6 @@ if (Platform.OS === 'web') {
   class NativeSecureStorageAdapter {
     async getItem(key: string): Promise<string | null> {
       try {
-        // console.log(`[Native SecureStore] getItem: ${key}`);
         return await SecureStore.getItemAsync(key);
       } catch (error) {
         console.warn(`[Native SecureStore] Failed to get item '${key}' from SecureStore, falling back to AsyncStorage:`, error);
@@ -46,7 +42,6 @@ if (Platform.OS === 'web') {
     }
     async setItem(key: string, value: string): Promise<void> {
       try {
-        // console.log(`[Native SecureStore] setItem: ${key}`);
         await SecureStore.setItemAsync(key, value);
       } catch (error) {
         console.warn(`[Native SecureStore] Failed to set item '${key}' in SecureStore, falling back to AsyncStorage:`, error);
@@ -55,7 +50,6 @@ if (Platform.OS === 'web') {
     }
     async removeItem(key: string): Promise<void> {
       try {
-        // console.log(`[Native SecureStore] removeItem: ${key}`);
         await SecureStore.deleteItemAsync(key);
       } catch (error) {
         console.warn(`[Native SecureStore] Failed to remove item '${key}' from SecureStore, falling back to AsyncStorage:`, error);

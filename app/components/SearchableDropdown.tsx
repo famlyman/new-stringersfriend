@@ -46,11 +46,7 @@ export default function SearchableDropdown({
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Debug logs for SearchableDropdown
-  console.log(`SearchableDropdown: Label: ${label}, Value: ${value}`);
-  console.log(`SearchableDropdown: Items:`, items);
   const selectedItem = items.find(item => item.id === value);
-  console.log(`SearchableDropdown: Selected Item:`, selectedItem);
 
   const filteredItems = items.filter(item => {
     if (!searchQuery) return true;

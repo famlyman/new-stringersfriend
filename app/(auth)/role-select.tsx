@@ -13,7 +13,6 @@ export default function RoleSelectScreen() {
   // Check if we have a valid session
   useEffect(() => {
     if (!isLoading && !session) {
-      console.log("RoleSelect: No session found, redirecting to login");
       router.replace('/(auth)/login');
     }
   }, [session, isLoading]);
@@ -70,8 +69,6 @@ export default function RoleSelectScreen() {
         console.error("Error creating profile:", upsertError);
         throw upsertError;
       }
-
-      console.log(`Role set to: ${role}`);
 
       // Redirect based on selected role
       if (role === 'stringer') {

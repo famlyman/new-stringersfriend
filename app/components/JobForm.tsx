@@ -109,7 +109,6 @@ export default function JobForm({
   };
 
   const handleBrandChange = (brandId: string) => {
-    console.log('Brand selected:', brandId);
     setSelectedBrandId(brandId);
     handleInputChange('racquet_brand_id', brandId);
     // Reset racquet_id when brand changes
@@ -117,28 +116,20 @@ export default function JobForm({
   };
 
   const handleModelChange = (modelId: string) => {
-    console.log('handleModelChange - Selected Model ID:', modelId);
-    console.log('handleModelChange - Current Selected Brand ID:', selectedBrandId);
-    console.log('handleModelChange - All Racquets:', racquets);
 
     // Find the racquet that matches both the selected brand and model
     const matchingRacquet = racquets.find(
       r => r.brand_id === selectedBrandId && r.model_id === modelId
     );
 
-    console.log('handleModelChange - Matching Racquet Found:', matchingRacquet);
-
     if (matchingRacquet) {
-      console.log('handleModelChange - Setting racquet_id to:', matchingRacquet.id);
       handleInputChange('racquet_id', matchingRacquet.id);
     } else {
-      console.log('handleModelChange - No matching racquet found, resetting racquet_id.');
       handleInputChange('racquet_id', '');
     }
   };
 
   const handleSubmit = async () => {
-    console.log('handleSubmit - Final formData before submission:', formData);
     try {
       await onSubmit(formData);
     } catch (error) {

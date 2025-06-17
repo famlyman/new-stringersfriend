@@ -15,7 +15,6 @@ export default function LoginScreen() {
   // If we're already logged in, redirect to role selection
   React.useEffect(() => {
     if (session && !isLoading) {
-      console.log("Login: Session exists, checking profile...");
       checkProfile();
     }
   }, [session, isLoading]);
@@ -30,14 +29,12 @@ export default function LoginScreen() {
 
       if (error) {
         if (error.code === 'PGRST116') {
-          console.log("Login: No profile found, redirecting to role select");
           router.replace('/(auth)/role-select');
         } else {
           console.error("Login: Error checking profile:", error);
           Alert.alert("Error", "Failed to check profile status");
         }
       } else if (profile) {
-        console.log("Login: Profile found, redirecting based on role");
         if (profile.role === 'stringer') {
           // Check if stringer has completed onboarding
           const { data: stringerData, error: stringerError } = await supabase
@@ -47,16 +44,13 @@ export default function LoginScreen() {
             .single();
 
           if (stringerError || !stringerData) {
-            console.log("Login: Stringer needs onboarding");
             router.replace('/(stringer)/onboarding');
           } else {
-            console.log("Login: Stringer has completed onboarding");
             router.replace('/(stringer)/(tabs)/dashboard');
           }
         } else if (profile.role === 'customer') {
           router.replace('/(customer)');
         } else {
-          console.log("Login: No role set, redirecting to role select");
           router.replace('/(auth)/role-select');
         }
       }
@@ -78,8 +72,6 @@ export default function LoginScreen() {
       if (error) {
         throw error;
       }
-
-      console.log("Login: Sign in successful");
       // The session will be updated by the auth state change listener
       // and the useEffect will handle the redirect
     } catch (error: any) {

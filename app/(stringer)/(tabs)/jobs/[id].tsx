@@ -96,7 +96,6 @@ export default function JobDetailScreen() {
         .single();
 
       if (error) throw error;
-      console.log('Raw job data:', data);
 
       if (data) {
         const transformedJob: JobDetail = {
@@ -297,7 +296,6 @@ export default function JobDetailScreen() {
               style={styles.infoCard}
               onPress={() => {
                 if (job.client && job.client.length > 0) {
-                  console.log('Navigating to client ID:', job.client[0].id);
                   router.push(`/(stringer)/clients/${job.client[0].id}`);
                 }
               }}
@@ -319,7 +317,6 @@ export default function JobDetailScreen() {
               style={styles.infoCard}
               onPress={() => {
                 if (job.racquet && job.racquet.length > 0) {
-                  console.log('Navigating to racquet ID:', job.racquet[0].id);
                   router.push(`/(stringer)/racquets/${job.racquet[0].id}`);
                 }
               }}

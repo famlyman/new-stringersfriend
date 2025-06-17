@@ -10,6 +10,7 @@ import { supabase } from '../src/lib/supabase';
 import AuthProvider, { useAuth } from '../src/contexts/AuthContext'; // Added useAuth
 import { clearDevSession } from '../src/utils/dev';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import React from 'react';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -47,23 +48,18 @@ function AuthRedirector() {
               .eq('id', session.user.id)
               .single();
 
-            console.log('Profile fetch result:', { profile, error });
-
             if (error) {
               throw error;
             }
 
             if (profile) {
               if (!profile.role && retryCount < MAX_RETRIES) {
-                // If role is null/undefined, retry after a delay
-                console.log(`Role not found, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
                 await new Promise(resolve => setTimeout(resolve, 500));
                 setRetryCount(prev => prev + 1);
                 return;
               }
 
               SplashScreen.hideAsync();
-              console.log(`AuthRedirector: User role is ${profile.role}, redirecting...`);
               
               if (profile.role === 'customer') {
                 router.replace('/(customer)');
@@ -75,12 +71,10 @@ function AuthRedirector() {
           } catch (error) {
             console.error('Error checking user role:', error);
             if (retryCount < MAX_RETRIES) {
-              console.log(`Retrying after error... (${retryCount + 1}/${MAX_RETRIES})`);
               await new Promise(resolve => setTimeout(resolve, 500));
               setRetryCount(prev => prev + 1);
               return;
             }
-            console.log('Max retries reached, defaulting to customer area');
             router.replace('/(customer)');
           } finally {
             setIsCheckingRole(false);
@@ -97,7 +91,6 @@ function AuthRedirector() {
       const inAuthGroup = segments[0] === '(auth)';
       
       if (!inAuthGroup) {
-        console.log("AuthRedirector: User is not authenticated. Redirecting to /(auth).");
         router.replace('/(auth)');
       }
     }
@@ -114,10 +107,9 @@ export default function RootLayout() {
     async function getInitialSession() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        console.log("Got initial session in RootLayout:", session ? "has session" : "no session");
         setInitialSession(session);
       } catch (error) {
-        console.error("Error getting initial session in RootLayout:", error);
+        console.error('Error fetching initial session:', error);
       } finally {
         setIsLoading(false);
       }

@@ -400,7 +400,6 @@ export default function NewJobScreen() {
       if (error) throw error;
       // Log the stringified data to see the full nested structure
       const stringifiedData = JSON.stringify(data, null, 2);
-      console.log('Raw data from fetchClientRacquets:', stringifiedData);
 
       const racquetsData = (data || []) as unknown as RacquetResponse[]; // Cast to unknown first to avoid type errors
       // FIX: The select query returns brand and model as arrays, not single objects. Adjust mapping.
@@ -444,7 +443,6 @@ export default function NewJobScreen() {
   };
 
   const handleRacquetSelect = (racquet: Racquet) => {
-    console.log('Racquet object passed to handleRacquetSelect:', racquet); // Debug log
     setSelectedRacquetId(racquet.id);
     setFormData(prev => ({ ...prev, racquet_id: racquet.id }));
 
@@ -463,7 +461,6 @@ export default function NewJobScreen() {
     };
 
     setEditableRacquet(updatedRacquet);
-    console.log('Editable Racquet after setting:', updatedRacquet);
 
     // Set the selected string brand and model IDs for the SearchableDropdowns
     if (selectedClient?.preferred_main_brand_id) {
@@ -531,7 +528,6 @@ export default function NewJobScreen() {
 
     setEditableRacquet(prev => {
       const newRacquet = prev ? { ...prev, [field]: parsedValue } : null;
-      console.log(`handleRacquetDetailChange: ${field} updated to`, parsedValue, 'New editableRacquet:', newRacquet); // Debug log
       return newRacquet;
     });
   };
@@ -637,8 +633,6 @@ export default function NewJobScreen() {
 
   const renderRacquetDetails = () => {
     if (!editableRacquet) return null;
-    console.log('Editable Racquet in renderRacquetDetails:', editableRacquet); // Debug log
-    console.log('Stringing Notes value:', editableRacquet?.stringing_notes); // New debug log for stringing notes
 
     const selectedClient = clients.find(client => client.id === selectedClientId);
 

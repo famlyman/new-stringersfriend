@@ -117,8 +117,6 @@ export default function EditJobScreen() {
     
     setIsSubmitting(true);
     try {
-      // In a real app, we would update the job in the database here
-      console.log('Updated job data:', { ...job, ...data });
       
       // Show success message
       Alert.alert(

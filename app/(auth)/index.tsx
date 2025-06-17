@@ -41,8 +41,6 @@ export default function WelcomeScreen() {
         throw upsertError;
       }
 
-      console.log(`Role set to: ${role}`);
-
       // Redirect based on selected role
       if (role === 'stringer') {
         router.replace('/(stringer)/onboarding');

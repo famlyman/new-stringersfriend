@@ -46,18 +46,14 @@ export default function AuthProvider({ children, initialSession }: AuthProviderP
       if (!mounted) return;
       
       try {
-        console.log("AuthProvider: Initializing auth...", { hasInitialSession: !!initialSession });
         
         // Set initial state from props if available
         if (initialSession) {
-          console.log("AuthProvider: Using initial session");
           setSession(initialSession);
           setUser(initialSession.user);
           setIsLoading(false);
           return;
         }
-
-        console.log("AuthProvider: No initial session, checking current session");
         // Get the current session if no initial session provided
         const { data: { session: currentSession }, error } = await supabase.auth.getSession();
         
@@ -66,7 +62,6 @@ export default function AuthProvider({ children, initialSession }: AuthProviderP
         }
         
         if (mounted) {
-          console.log("AuthProvider: Setting session state", { hasSession: !!currentSession });
           setSession(currentSession);
           setUser(currentSession?.user || null);
           setIsLoading(false);
@@ -77,8 +72,6 @@ export default function AuthProvider({ children, initialSession }: AuthProviderP
           const { data: listener } = supabase.auth.onAuthStateChange(
             async (_event, newSession) => {
               if (!mounted) return;
-              
-              console.log("AuthProvider: Auth state changed:", _event, newSession ? "has session" : "no session");
               
               setSession(prevSession => {
                 // Prevent unnecessary re-renders if session hasn't changed
@@ -92,7 +85,6 @@ export default function AuthProvider({ children, initialSession }: AuthProviderP
               setIsLoading(false);
 
               if (_event === 'SIGNED_OUT') {
-                console.log("AuthProvider: User signed out");
                 setSession(null);
                 setUser(null);
               }
@@ -113,7 +105,6 @@ export default function AuthProvider({ children, initialSession }: AuthProviderP
     return () => {
       mounted = false;
       if (authListener) {
-        console.log("AuthProvider: Cleaning up...");
         authListener.subscription.unsubscribe();
       }
     };

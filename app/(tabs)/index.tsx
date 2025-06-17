@@ -30,7 +30,6 @@ export default function StringerOnboarding() {
         } else if (data) {
           // Profile found, onboarding already completed
           setHasCompletedOnboarding(true);
-          console.log("Stringer profile found, redirecting to dashboard.");
           router.replace('/(tabs)'); // Redirect to main stringer dashboard
           return;
         }

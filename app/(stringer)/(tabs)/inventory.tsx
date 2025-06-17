@@ -75,7 +75,6 @@ export default function InventoryScreen() {
         .returns<StringInventory[]>();
 
       if (fetchError) throw fetchError;
-      console.log('Inventory data:', data);
       setInventory(data || []);
       setError(null);
     } catch (err) {
@@ -99,7 +98,6 @@ export default function InventoryScreen() {
   }, [fetchInventory]);
 
   const renderItem = ({ item }: { item: StringInventory }) => {
-    console.log('Rendering item:', item);
     const brandName = item.string_brand?.name || 'Unknown Brand';
     const modelName = item.string_model?.name;
     const truncatedModel = modelName ? 

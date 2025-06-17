@@ -55,7 +55,6 @@ export default function JobsScreen() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      console.log('Raw job data:', data);
       
       // Transform the data to match our JobWithClient type
       const transformedJobs: JobWithClient[] = (data || []).map((job: any) => ({

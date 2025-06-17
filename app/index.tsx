@@ -11,12 +11,8 @@ export default function WelcomeScreen() {
   const [selectingRole, setSelectingRole] = useState(false);
 
   const selectRole = async (role: 'stringer' | 'customer') => {
-    console.log("Selecting role:", role, "Session:", !!session);
     
     if (!session?.user?.id) {
-      console.log("No session, redirecting to registration with role:", role);
-      // If not logged in, go to registration with selected role
-      console.log("Navigating to register with role:", role);
       router.push({
         pathname: '/(auth)/register',
         params: { 
@@ -32,7 +28,6 @@ export default function WelcomeScreen() {
     setSelectingRole(true);
 
     try {
-      console.log("Updating profile with role:", role);
       // Create or update profile with selected role
       const { error: upsertError } = await supabase
         .from('profiles')
@@ -54,8 +49,6 @@ export default function WelcomeScreen() {
         throw upsertError;
       }
 
-      console.log(`Role set to: ${role}, redirecting...`);
-
       // Use a small timeout to ensure state updates before navigation
       await new Promise(resolve => setTimeout(resolve, 100));
       
@@ -63,8 +56,6 @@ export default function WelcomeScreen() {
       const redirectPath = role === 'stringer' 
         ? '/(stringer)/onboarding' 
         : '/(customer)';
-        
-      console.log("Attempting to redirect to:", redirectPath);
       
       // Use replace to prevent going back to welcome screen
       router.replace(redirectPath);
@@ -81,7 +72,6 @@ export default function WelcomeScreen() {
 
   const handleSignOut = async () => {
     try {
-      console.log("Signing out...");
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       

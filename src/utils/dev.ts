@@ -15,7 +15,6 @@ export const clearDevSession = async () => {
   if (!shouldClear) return;
 
   try {
-    console.log('Development: Clearing all stored data...');
     
     // Clear Supabase session
     await supabase.auth.signOut();
@@ -29,8 +28,6 @@ export const clearDevSession = async () => {
       await SecureStore.deleteItemAsync('user_profile');
       await SecureStore.deleteItemAsync('should_clear_session');
     }
-    
-    console.log('Development: All stored data cleared successfully');
   } catch (error) {
     console.error('Development: Error clearing stored data:', error);
   }

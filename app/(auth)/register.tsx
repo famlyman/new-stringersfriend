@@ -15,13 +15,11 @@ export default function RegisterScreen() {
   // Memoize the selected role to prevent unnecessary re-renders
   const selectedRole = React.useMemo(() => {
     const role = params.selectedRole || 'customer';
-    console.log("Selected role:", role);
     return role;
   }, [params.selectedRole]);
   
   // Only log on initial mount and when role changes
   React.useEffect(() => {
-    console.log("Register screen mounted with role:", selectedRole);
   }, [selectedRole]);
 
   const handleRegister = async () => {
@@ -30,7 +28,6 @@ export default function RegisterScreen() {
     setError(null);
 
     try {
-      console.log("Starting registration process...");
       
       // Validate email and password
       if (!email || !password) {
@@ -42,7 +39,6 @@ export default function RegisterScreen() {
       }
 
       // Create the user account
-      console.log("Creating user account...");
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -66,8 +62,6 @@ export default function RegisterScreen() {
       if (!authData.user) {
         throw new Error('Failed to create user account');
       }
-
-      console.log("User created successfully:", authData.user.id);
       
       // Wait a moment for the trigger to create the profile
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -108,11 +102,8 @@ export default function RegisterScreen() {
           throw new Error(`Failed to update profile: ${updateError.message}`);
         }
       }
-
-      console.log("Registration successful!");
       
       // Sign in the user immediately after registration
-      console.log("Attempting to sign in after registration...");
       
       // Wait for the profile to be created and replicated
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -149,7 +140,6 @@ export default function RegisterScreen() {
         const maxAttempts = 5;
         
         while (attempts < maxAttempts) {
-          console.log(`Fetching profile (attempt ${attempts + 1}/${maxAttempts})...`);
           
           const { data, error } = await supabase
             .from('profiles')
@@ -164,17 +154,13 @@ export default function RegisterScreen() {
           
           // If we get here, either data is null or role is missing
           if (!data) {
-            console.log(`Profile not found (attempt ${attempts + 1})`);
           } else if (!data.role) {
-            console.log(`Role not set in profile (attempt ${attempts + 1})`);
           }
           
           if (error) {
             console.error(`Error fetching profile (attempt ${attempts + 1}):`, error);
           } else if (!data) {
-            console.log(`Profile not found (attempt ${attempts + 1})`);
           } else {
-            console.log(`Role not set in profile (attempt ${attempts + 1})`);
           }
           
           attempts++;
@@ -188,14 +174,11 @@ export default function RegisterScreen() {
           profile = { role: selectedRole };
         }
 
-        console.log("Final profile after registration:", profile);
-
         // Force a hard navigation to ensure no cached routes are used
         const redirectPath = profile.role === 'customer' 
           ? '/(customer)' 
           : '/(stringer)/onboarding';
           
-        console.log(`Redirecting to ${redirectPath} after registration`);
         router.replace({ 
           pathname: redirectPath, 
           params: { _t: Date.now() } 
