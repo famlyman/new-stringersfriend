@@ -29,7 +29,7 @@ export default function JobsLayout() {
       <Stack.Screen
         name="new"
         options={{
-          headerShown: true,
+          headerShown: false,
           title: 'New Job',
           presentation: 'modal',
           headerStyle: {
@@ -69,6 +69,7 @@ export default function JobsLayout() {
           },
           headerTitleAlign: 'center',
         }}
+        initialParams={{ id: undefined }}
       />
     </Stack>
   );

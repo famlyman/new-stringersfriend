@@ -13,39 +13,26 @@ import {
 import { useAuth } from '../../../../src/contexts/AuthContext';
 import { supabase } from '../../../../src/lib/supabase';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { JobStatus, statusConfig, Job as JobBase } from '../../../../src/types/job';
 
-type JobStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
-
-type Job = {
-  id: string;
-  title: string;
-  status: JobStatus;
+interface JobWithClient extends Omit<JobBase, 'client'> {
   client: {
     id: string;
     full_name: string;
-  };
-  created_at: string;
+  } | null;
   racket_count: number;
-};
+  title: string;
+}
 
-const getStatusDisplay = (status: JobStatus): { text: string; color: string } => {
-  switch (status) {
-    case 'in_progress':
-      return { text: 'In Progress', color: '#FFA000' };
-    case 'completed':
-      return { text: 'Completed', color: '#4CAF50' };
-    case 'cancelled':
-      return { text: 'Cancelled', color: '#F44336' };
-    case 'pending':
-    default:
-      return { text: 'Pending', color: '#2196F3' };
-  }
+const getStatusDisplay = (jobStatus: JobStatus): { text: string; color: string } => {
+  const config = statusConfig[jobStatus] || statusConfig.pending;
+  return { text: config.label, color: config.color };
 };
 
 export default function JobsScreen() {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const [jobs, setJobs] = useState<JobWithClient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,13 +48,24 @@ export default function JobsScreen() {
         .from('jobs')
         .select(`
           *,
-          client:clients (id, full_name)
+          client:clients!jobs_client_id_fkey (id, full_name),
+          racquet:racquets!jobs_racquet_id_fkey (id)
         `)
         .eq('stringer_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setJobs(data || []);
+      console.log('Raw job data:', data);
+      
+      // Transform the data to match our JobWithClient type
+      const transformedJobs: JobWithClient[] = (data || []).map((job: any) => ({
+        ...job,
+        title: job.job_type ? job.job_type.charAt(0).toUpperCase() + job.job_type.slice(1) : (job.job_notes ? job.job_notes.substring(0, Math.min(job.job_notes.length, 50)) + (job.job_notes.length > 50 ? '...' : '') : `Job #${job.id.slice(0, 6)}`),
+        client: job.client ? { id: job.client.id, full_name: job.client.full_name } : null,
+        racket_count: job.racquet ? 1 : 0
+      }));
+      
+      setJobs(transformedJobs);
     } catch (err) {
       console.error('Error fetching jobs:', err);
       setError('Failed to load jobs. Please try again.');
@@ -77,27 +75,31 @@ export default function JobsScreen() {
   };
 
   useEffect(() => {
-    fetchJobs();
+    if (user?.id) {
+      fetchJobs();
+    }
   }, [user?.id]);
 
-  const renderItem = ({ item }: { item: Job }) => {
-    const status = getStatusDisplay(item.status);
+  const renderItem = ({ item }: { item: JobWithClient }) => {
+    const status = getStatusDisplay(item.job_status);
     
     return (
       <Link href={`/(stringer)/(tabs)/jobs/${item.id}`} asChild>
-        <TouchableOpacity style={styles.jobItem}>
-          <View style={styles.jobInfo}>
-            <Text style={styles.jobTitle}>{item.title || `Job #${item.id.slice(0, 6)}`}</Text>
-            {item.client && <Text style={styles.jobClient}>{item.client.full_name}</Text>}
-            <Text style={[styles.jobStatus, { color: status.color }]}>
-              {status.text}
-            </Text>
-            <Text style={styles.jobDate}>
-              {new Date(item.created_at).toLocaleDateString()}
-              {item.racket_count > 0 && ` • ${item.racket_count} ${item.racket_count === 1 ? 'racket' : 'rackets'}`}
-            </Text>
+        <TouchableOpacity style={styles.jobCard}>
+          <View style={styles.jobCardContent}>
+            <Text style={styles.jobCardTitle}>{item.title}</Text>
+            {item.client && <Text style={styles.jobCardSubtitle}>{item.client.full_name}</Text>}
+            <View style={styles.jobCardDetails}>
+              <Text style={styles.jobCardDetailText}>
+                {new Date(item.created_at).toLocaleDateString()}
+                {item.racket_count > 0 && ` • ${item.racket_count} ${item.racket_count === 1 ? 'racket' : 'racquets'}`}
+              </Text>
+              <View style={[styles.jobCardStatusContainer, { backgroundColor: status.color }]}>
+                <Text style={styles.jobCardStatusText}>{status.text}</Text>
+              </View>
+            </View>
           </View>
-          <Ionicons name="chevron-forward" size={24} color="#666" />
+          <Ionicons name="chevron-forward" size={24} color="#999" />
         </TouchableOpacity>
       </Link>
     );
@@ -127,7 +129,7 @@ export default function JobsScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top }]}>
+      <View style={styles.header}>
         <Text style={styles.title}>Jobs</Text>
         <Link href="/(stringer)/(tabs)/jobs/new" asChild>
           <TouchableOpacity style={styles.addButton}>
@@ -198,8 +200,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    padding: 16,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
@@ -212,41 +213,56 @@ const styles = StyleSheet.create({
   listContent: {
     padding: 16,
   },
-  jobItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  jobCard: {
     backgroundColor: '#fff',
-    borderRadius: 8,
+    borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  jobInfo: {
+  jobCardContent: {
     flex: 1,
   },
-  jobTitle: {
-    fontSize: 16,
+  jobCardTitle: {
+    fontSize: 18,
     fontWeight: '600',
     color: '#333',
     marginBottom: 4,
   },
-  jobClient: {
-    fontSize: 14,
+  jobCardSubtitle: {
+    fontSize: 15,
     color: '#666',
-    marginBottom: 4,
+    marginBottom: 8,
   },
-  jobStatus: {
+  jobCardDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  jobCardDetailText: {
     fontSize: 14,
-    fontWeight: '500',
-    marginBottom: 4,
-  },
-  jobDate: {
-    fontSize: 13,
     color: '#888',
+  },
+  jobCardStatusContainer: {
+    borderRadius: 20,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    marginLeft: 10,
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  jobCardStatusText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 12,
   },
   addButton: {
     backgroundColor: '#007AFF',

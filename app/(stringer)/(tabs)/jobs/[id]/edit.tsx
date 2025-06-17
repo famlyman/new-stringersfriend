@@ -1,28 +1,28 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { Job, JobFormData } from '../../../../../src/types/job';
 import JobForm from '../../../../components/JobForm';
+import { supabase } from '../../../../../src/lib/supabase';
+import { Racquet as RacquetType } from '../../../../../src/types/racquet';
+import { StringItem as ImportedStringItem } from '../../../../../src/types/string';
 
-// Mock job data - in a real app, this would be fetched from your database
-const mockJob: Job = {
-  id: '1',
-  created_at: '2025-05-28T10:00:00Z',
-  updated_at: '2025-05-28T10:00:00Z',
-  user_id: 'user1',
-  client_id: 'client1',
-  client_name: 'John Doe',
-  racquet_id: 'racquet1',
-  racquet_name: 'Babolat Pure Aero',
-  string_id: 'string1',
-  string_name: 'Luxilon Alu Power 1.25',
-  tension_main: 52,
-  tension_cross: 50,
-  status: 'pending',
-  price: 35,
-  notes: 'Prefer slightly lower tension on crosses. Customer mentioned the last string job felt too stiff.',
-};
+interface Client {
+  id: string;
+  full_name: string;
+}
+
+interface StringBrandForForm {
+  id: string;
+  name: string;
+}
+
+interface StringModelForForm {
+  id: string;
+  name: string;
+  brand_id: string;
+}
 
 export default function EditJobScreen() {
   const router = useRouter();
@@ -30,20 +30,83 @@ export default function EditJobScreen() {
   const [job, setJob] = useState<Job | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [racquets, setRacquets] = useState<RacquetType[]>([]);
+  const [strings, setStrings] = useState<ImportedStringItem[]>([]);
+  const [brands, setBrands] = useState<StringBrandForForm[]>([]);
+  const [models, setModels] = useState<StringModelForForm[]>([]);
+  const [stringBrands, setStringBrands] = useState<StringBrandForForm[]>([]);
+  const [stringModels, setStringModels] = useState<StringModelForForm[]>([]);
 
   useEffect(() => {
-    fetchJob();
+    fetchData();
   }, [id]);
 
-  const fetchJob = async () => {
+  const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
-      setJob(mockJob);
+      const [
+        { data: jobData, error: jobError },
+        { data: clientsData, error: clientsError },
+        { data: racquetsData, error: racquetsError },
+        { data: stringsData, error: stringsError },
+        { data: brandsData, error: brandsError },
+        { data: modelsData, error: modelsError },
+        { data: stringBrandsData, error: stringBrandsError },
+        { data: stringModelsData, error: stringModelsError }
+      ] = await Promise.all([
+        supabase.from('jobs').select(`*,
+          client:clients!jobs_client_id_fkey(id,full_name),
+          racquet:racquets!jobs_racquet_id_fkey(id,brand_id,model_id,brand:brands(name),model:models(name)),
+          job_stringing_details:job_stringing_details!fk_job(id,tension_main,tension_cross,price,
+            main_string_model:string_model!fk_job_main_string_model(id,name,brand_id,brand:string_brand(name)),
+            cross_string_model:string_model!fk_job_cross_string_model(id,name,brand_id,brand:string_brand(name))
+          )
+        `).eq('id', id).single(),
+        supabase.from('clients').select('id,full_name'),
+        supabase.from('racquets').select('id,brand_id,model_id,brand:brands(name),model:models(name)'),
+        supabase.from('string_inventory').select('id,brand_id,model_id,brand:string_brand(name),model:string_model(name)'),
+        supabase.from('brands').select('id,name'),
+        supabase.from('models').select('id,name,brand_id'),
+        supabase.from('string_brand').select('id,name'),
+        supabase.from('string_model').select('id,name,brand_id'),
+      ]);
+
+      if (jobError) throw jobError;
+      if (clientsError) throw clientsError;
+      if (racquetsError) throw racquetsError;
+      if (stringsError) throw stringsError;
+      if (brandsError) throw brandsError;
+      if (modelsError) throw modelsError;
+      if (stringBrandsError) throw stringBrandsError;
+      if (stringModelsError) throw stringModelsError;
+
+      setJob(jobData as Job);
+      setClients(clientsData || []);
+      setRacquets(racquetsData?.map((item: any) => ({
+        id: item.id,
+        brand_id: item.brand_id,
+        model_id: item.model_id,
+        name: item.name,
+        brand: item.brand?.name || '',
+        model: item.model?.name || '',
+      })) || []);
+      setStrings(stringsData?.map((item: any) => ({
+        id: item.id,
+        brand_id: item.brand_id,
+        model_id: item.model_id,
+        brand: item.brand?.name || '',
+        model: item.model?.name || '',
+        string_name: `${item.brand?.name || ''} ${item.model?.name || ''}`.trim(),
+      })) || []);
+      setBrands(brandsData || []);
+      setModels(modelsData || []);
+      setStringBrands(stringBrandsData || []);
+      setStringModels(stringModelsData || []);
+      
     } catch (error) {
-      console.error('Error fetching job:', error);
-      Alert.alert('Error', 'Failed to load job details');
+      console.error('Error fetching data for job edit screen:', error);
+      Alert.alert('Error', 'Failed to load job details and associated data.');
     } finally {
       setIsLoading(false);
     }
@@ -54,9 +117,6 @@ export default function EditJobScreen() {
     
     setIsSubmitting(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
       // In a real app, we would update the job in the database here
       console.log('Updated job data:', { ...job, ...data });
       
@@ -101,13 +161,15 @@ export default function EditJobScreen() {
 
   // Convert job data to form data format
   const initialFormData: JobFormData = {
-    client_id: job.client_id,
-    racquet_id: job.racquet_id,
-    string_id: job.string_id,
-    tension_main: job.tension_main.toString(),
-    tension_cross: job.tension_cross.toString(),
-    notes: job.notes || '',
-    price: job.price.toString(),
+    client_id: job.client?.[0]?.id || '',
+    racquet_id: job.racquet?.[0]?.id || '',
+    racquet_brand_id: job.racquet?.[0]?.brand_id || '',
+    string_id: job.job_stringing_details?.[0]?.main_string_model?.[0]?.id || '',
+    cross_string_id: job.job_stringing_details?.[0]?.cross_string_model?.[0]?.id || '',
+    tension_main: job.job_stringing_details?.[0]?.tension_main?.toString() || '',
+    tension_cross: job.job_stringing_details?.[0]?.tension_cross?.toString() || '',
+    notes: job.job_notes || '',
+    price: job.job_stringing_details?.[0]?.price?.toString() || '',
   };
 
   return (
@@ -115,14 +177,27 @@ export default function EditJobScreen() {
       <Stack.Screen 
         options={{
           title: 'Edit Job',
+          headerShown: true, 
           headerLeft: () => (
-            <Ionicons 
-              name="arrow-back" 
-              size={24} 
-              color="#007AFF" 
+            <TouchableOpacity 
               onPress={() => router.back()}
               style={styles.backButton}
-            />
+            >
+              <Ionicons
+                name="arrow-back"
+                size={24}
+                color="#007AFF"
+              />
+            </TouchableOpacity>
+          ),
+          headerRight: () => (
+            <TouchableOpacity onPress={() => handleSubmit(initialFormData)} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <ActivityIndicator color="#007AFF" />
+              ) : (
+                <Ionicons name="save-outline" size={24} color="#007AFF" style={styles.saveButton} />
+              )}
+            </TouchableOpacity>
           ),
         }} 
       />
@@ -132,13 +207,24 @@ export default function EditJobScreen() {
         onSubmit={handleSubmit}
         isLoading={isSubmitting}
         submitButtonText="Save Changes"
-        clients={[]} racquets={[]} strings={[]} onAddClient={function (): void {
-          throw new Error('Function not implemented.');
-        } } onAddRacquet={function (): void {
-          throw new Error('Function not implemented.');
-        } } onAddString={function (): void {
-          throw new Error('Function not implemented.');
-        } }      />
+        clients={clients}
+        racquets={racquets}
+        strings={strings}
+        brands={brands?.map(b => ({ id: b.id, name: b.name })) || []}
+        models={models?.map(m => ({ id: m.id, name: m.name, brand_id: m.brand_id })) || []}
+        stringBrands={stringBrands?.map(sb => ({ string_id: sb.id, string_brand: sb.name })) || []}
+        stringModels={stringModels?.map(sm => ({ model_id: sm.id, model: sm.name, brand_id: sm.brand_id })) || []}
+        onAddClient={() => {
+          // Implement navigation to add client screen or a modal
+          Alert.alert('Functionality Not Implemented', 'Add Client not yet implemented.');
+        }}
+        onAddRacquet={() => {
+          Alert.alert('Functionality Not Implemented', 'Add Racquet not yet implemented.');
+        }}
+        onAddString={() => {
+          Alert.alert('Functionality Not Implemented', 'Add String not yet implemented.');
+        }}
+      />
     </View>
   );
 }
@@ -175,5 +261,8 @@ const styles = StyleSheet.create({
   },
   backButton: {
     marginLeft: 16,
+  },
+  saveButton: {
+    marginRight: 16,
   },
 });

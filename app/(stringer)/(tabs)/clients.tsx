@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity
 import { useAuth } from '../../../src/contexts/AuthContext';
 import { supabase } from '../../../src/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 
 type Client = {
   id: string;
@@ -19,6 +19,17 @@ export default function ClientsScreen() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+
+  const formatPhoneNumber = (phone: string | null | undefined) => {
+    if (!phone) return 'No phone';
+    // Remove all non-numeric characters
+    const cleaned = phone.replace(/\D/g, '');
+    // Check if we have a valid 10-digit number
+    if (cleaned.length !== 10) return phone;
+    // Format as (XXX) XXX-XXXX
+    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+  };
 
   useEffect(() => {
     if (!session?.user?.id) {
@@ -52,14 +63,20 @@ export default function ClientsScreen() {
   }, [session]);
 
   const renderClientItem = ({ item }: { item: Client }) => (
-    <View style={styles.clientCard}>
-      <View style={styles.clientInfo}>
-        <Text style={styles.clientName}>{item.full_name}</Text>
-        {item.email && <Text style={styles.clientDetail}>{item.email}</Text>}
-        {item.phone && <Text style={styles.clientDetail}>{item.phone}</Text>}
+    <TouchableOpacity
+      style={styles.infoCard}
+      onPress={() => router.push(`/(stringer)/clients/${item.id}`)}
+    >
+      <View style={styles.infoIcon}>
+        <Ionicons name="person-outline" size={20} color="#007AFF" />
       </View>
-      <Ionicons name="chevron-forward" size={20} color="#999" />
-    </View>
+      <View style={styles.infoContent}>
+        <Text style={styles.infoTitle}>{item.full_name}</Text>
+        {item.email && <Text style={styles.infoSubtitle}>{item.email}</Text>}
+        {item.phone && <Text style={styles.infoSubtitle}>{formatPhoneNumber(item.phone)}</Text>}
+      </View>
+      <Ionicons name="chevron-forward" size={24} color="#C7C7CC" />
+    </TouchableOpacity>
   );
 
   if (loading) {
@@ -162,32 +179,40 @@ const styles = StyleSheet.create({
   listContent: {
     padding: 16,
   },
-  clientCard: {
+  infoCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    borderRadius: 8,
+    borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
   },
-  clientInfo: {
+  infoIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f0f7ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  infoContent: {
     flex: 1,
   },
-  clientName: {
-    fontSize: 16,
+  infoTitle: {
+    fontSize: 17,
     fontWeight: '600',
     color: '#333',
     marginBottom: 4,
   },
-  clientDetail: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 2,
+  infoSubtitle: {
+    fontSize: 15,
+    color: '#888',
   },
   emptyState: {
     flex: 1,

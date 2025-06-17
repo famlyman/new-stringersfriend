@@ -12,6 +12,26 @@ export interface Job {
   due_date?: string;
   completed_date?: string;
   stringer_id: string;
+  client?: { id: string; full_name: string; }[];
+  racquet?: { 
+    id: string; 
+    brand_id: string; 
+    model_id: string; 
+    name?: string;
+    brand?: { name: string; }[]; 
+    model?: { name: string; }[];
+  }[];
+  job_stringing_details?: {
+    id: string;
+    tension_main?: number;
+    tension_cross?: number;
+    price?: number;
+    main_string_model?: { id: string; name: string; brand?: { name: string; }[] }[];
+    cross_string_model?: { id: string; name: string; brand?: { name: string; }[] }[];
+  }[];
+  tension_main?: number;
+  tension_cross?: number;
+  price?: number;
 }
 
 export interface JobFormData {

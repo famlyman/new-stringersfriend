@@ -1,47 +1,134 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Job, JobStatus, statusConfig } from '../../../../src/types/job';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { JobStatus, statusConfig } from '../../../../src/types/job';
+import { supabase } from '../../../../src/lib/supabase';
+import { useAuth } from '../../../../src/contexts/AuthContext';
+import { normalizeToArray } from '../../../../src/utils/dataNormalization';
+import { Menu } from 'react-native-paper';
 
-// Mock data - will be replaced with actual API calls
-const mockJob: Job = {
-  id: '1',
-  created_at: '2025-05-28T10:00:00Z',
-  updated_at: '2025-05-28T10:00:00Z',
-  user_id: 'user1',
-  client_id: 'client1',
-  client_name: 'John Doe',  
-  racquet_id: 'racquet1',
-  racquet_name: 'Babolat Pure Aero',
-  string_id: 'string1',
-  string_name: 'Luxilon Alu Power 1.25',
-  tension_main: 52,
-  tension_cross: 50,
-  status: 'pending',
-  price: 35,
-  notes: 'Prefer slightly lower tension on crosses. Customer mentioned the last string job felt too stiff.',
-};
+// Define JobDetail explicitly with all necessary fields
+interface JobDetail {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  client_id: string | null;
+  racquet_id: string;
+  job_type: string;
+  job_status: JobStatus;
+  job_notes: string | null;
+  due_date: string | null;
+  completed_date: string | null;
+  stringer_id: string;
+
+  // Embedded relationships 
+  client: {
+    id: string;
+    full_name: string;
+  }[] | null; // Always treated as an array
+  racquet: {
+    id: string;
+    brand: { name: string; }[] | null; // Always treated as an array
+    model: { name: string; }[] | null; // Always treated as an array
+  }[] | null; // Always treated as an array
+  job_stringing_details: {
+    id: string;
+    tension_main?: number | null;
+    tension_cross?: number | null;
+    price?: number | null;
+    main_string_model?: { name: string }[] | null; // Always treated as an array
+    cross_string_model?: { name: string }[] | null; // Always treated as an array
+  }[]; 
+}
 
 const statusFlow: JobStatus[] = ['pending', 'in_progress', 'completed', 'picked_up'];
 
 export default function JobDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [job, setJob] = useState<Job | null>(null);
+  const { user } = useAuth();
+  const insets = useSafeAreaInsets();
+  const [job, setJob] = useState<JobDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
+
+  const openMenu = () => setMenuVisible(true);
+  const closeMenu = () => setMenuVisible(false);
 
   useEffect(() => {
-    fetchJob();
-  }, [id]);
+    if (id) {
+      fetchJob(id);
+    }
+  }, [id, user?.id]);
 
-  const fetchJob = async () => {
+  const fetchJob = async (jobId: string) => {
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 600));
-      setJob(mockJob);
+      const { data, error } = await supabase
+        .from('jobs')
+        .select(`
+          id,
+          created_at,
+          updated_at,
+          client_id,
+          racquet_id,
+          job_type,
+          job_status,
+          job_notes,
+          due_date,
+          completed_date,
+          stringer_id,
+          client:clients!jobs_client_id_fkey (id, full_name),
+          racquet:racquets!jobs_racquet_id_fkey (id, brand:brands(name), model:models(name)),
+          job_stringing_details:job_stringing_details!fk_job (
+            id, 
+            tension_main, 
+            tension_cross, 
+            price, 
+            main_string_model:string_model!fk_job_main_string_model (name), 
+            cross_string_model:string_model!fk_job_cross_string_model (name)
+          )
+        `)
+        .eq('id', jobId)
+        .single();
+
+      if (error) throw error;
+      console.log('Raw job data:', data);
+
+      if (data) {
+        const transformedJob: JobDetail = {
+          id: data.id,
+          created_at: data.created_at,
+          updated_at: data.updated_at,
+          client_id: data.client_id,
+          racquet_id: data.racquet_id,
+          job_type: data.job_type,
+          job_status: (data.job_status || 'pending') as JobStatus,
+          job_notes: data.job_notes,
+          due_date: data.due_date,
+          completed_date: data.completed_date,
+          stringer_id: data.stringer_id,
+          
+          client: normalizeToArray(data.client),
+          racquet: normalizeToArray(data.racquet ? {
+            id: (data.racquet as any).id,
+            brand: normalizeToArray((data.racquet as any).brand),
+            model: normalizeToArray((data.racquet as any).model),
+          } : null),
+          job_stringing_details: (data.job_stringing_details || []).map((detail: any) => ({
+            id: detail.id,
+            tension_main: detail.tension_main,
+            tension_cross: detail.tension_cross,
+            price: detail.price,
+            main_string_model: normalizeToArray(detail.main_string_model),
+            cross_string_model: normalizeToArray(detail.cross_string_model),
+          })),
+        };
+        setJob(transformedJob);
+      }
     } catch (error) {
       console.error('Error fetching job:', error);
       Alert.alert('Error', 'Failed to load job details');
@@ -55,19 +142,26 @@ export default function JobDetailScreen() {
     
     setUpdating(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // In a real app, we would update the job in the database
-      const updatedJob = {
-        ...job,
-        status: newStatus,
+      const updatedFields: { job_status: JobStatus; updated_at: string; completed_date?: string } = {
+        job_status: newStatus,
         updated_at: new Date().toISOString(),
-        ...(newStatus === 'completed' && !job.completed_at && { completed_at: new Date().toISOString() }),
-        ...(newStatus === 'picked_up' && !job.picked_up_at && { picked_up_at: new Date().toISOString() }),
       };
+
+      if (newStatus === 'completed' && !job.completed_date) {
+        updatedFields.completed_date = new Date().toISOString();
+      }
+
+      const { error } = await supabase
+        .from('jobs')
+        .update(updatedFields)
+        .eq('id', job.id);
+
+      if (error) {
+        throw error;
+      }
       
-      setJob(updatedJob);
+      // Only update local state if database update is successful
+      setJob(prevJob => prevJob ? { ...prevJob, ...updatedFields } : null);
       Alert.alert('Success', `Job marked as ${statusConfig[newStatus].label.toLowerCase()}`);
     } catch (error) {
       console.error('Error updating job status:', error);
@@ -88,10 +182,7 @@ export default function JobDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Simulate API call
-              await new Promise(resolve => setTimeout(resolve, 800));
-              router.back();
-              // In a real app, we would delete the job from the database
+              router.push('/(stringer)/(tabs)/jobs');
             } catch (error) {
               console.error('Error deleting job:', error);
               Alert.alert('Error', 'Failed to delete job');
@@ -124,46 +215,66 @@ export default function JobDetailScreen() {
     );
   }
 
-  const nextStatus = getNextStatus(job.status);
-  const statusInfo = statusConfig[job.status];
+  const nextStatus = getNextStatus(job.job_status);
+  const statusInfo = statusConfig[job.job_status];
+
+  // Get stringing details, assuming there's only one set of stringing details per job
+  const stringingDetails = job.job_stringing_details && job.job_stringing_details.length > 0
+    ? job.job_stringing_details[0]
+    : null;
 
   return (
     <View style={styles.container}>
       <Stack.Screen 
         options={{
           title: 'Job Details',
-          headerRight: () => (
+          headerShown: true,
+          headerLeft: () => (
             <TouchableOpacity 
               style={styles.menuButton}
-              onPress={() => {
-                Alert.alert(
-                  'Job Actions',
-                  '',
-                  [
-                    {
-                      text: 'Edit Job',
-                      onPress: () => router.push(`/(stringer)/(tabs)/jobs/${job.id}/edit`),
-                    },
-                    {
-                      text: 'Delete Job',
-                      style: 'destructive',
-                      onPress: deleteJob,
-                    },
-                    {
-                      text: 'Cancel',
-                      style: 'cancel',
-                    },
-                  ]
-                );
-              }}
+              onPress={() => router.push('/(stringer)/(tabs)/jobs')}
             >
-              <Ionicons name="ellipsis-vertical" size={20} color="#007AFF" />
+              <Ionicons name="arrow-back" size={24} color="#007AFF" />
             </TouchableOpacity>
+          ),
+          headerRight: () => (
+            <Menu
+              visible={menuVisible}
+              onDismiss={closeMenu}
+              anchor={
+                <TouchableOpacity
+                  style={styles.menuButton}
+                  onPress={openMenu}
+                >
+                  <Ionicons name="ellipsis-vertical" size={20} color="#007AFF" />
+                </TouchableOpacity>
+              }
+            >
+              <Menu.Item
+                onPress={() => {
+                  closeMenu();
+                  if (job?.id) {
+                    router.push(`/(stringer)/(tabs)/jobs/${job.id}/edit`);
+                  } else {
+                    Alert.alert('Error', 'Job ID not available for editing.');
+                    console.error('Attempted to edit job with no ID.');
+                  }
+                }}
+                title="Edit Job"
+              />
+              <Menu.Item
+                onPress={() => {
+                  closeMenu();
+                  deleteJob();
+                }}
+                title="Delete Job"
+              />
+            </Menu>
           ),
         }} 
       />
       
-      <ScrollView style={styles.scrollContainer}>
+      <ScrollView style={[styles.scrollContainer, { paddingBottom: 84 + insets.bottom }]}>
         <View style={styles.header}>
           <View style={styles.statusBadge}>
             <View style={[styles.statusIndicator, { backgroundColor: statusInfo.color }]} />
@@ -171,20 +282,25 @@ export default function JobDetailScreen() {
               {statusInfo.label}
             </Text>
           </View>
-          <Text style={styles.price}>${job.price.toFixed(2)}</Text>
+          <Text style={styles.price}>${stringingDetails?.price?.toFixed(2) || '0.00'}</Text>
         </View>
         
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Client</Text>
           <TouchableOpacity 
             style={styles.infoCard}
-            onPress={() => router.push(`/(stringer)/(tabs)/clients/${job.client_id}`)}
+            onPress={() => {
+              if (job.client && job.client.length > 0) {
+                console.log('Navigating to client ID:', job.client[0].id);
+                router.push(`/(stringer)/clients/${job.client[0].id}`);
+              }
+            }}
           >
             <View style={styles.infoIcon}>
               <Ionicons name="person-outline" size={20} color="#007AFF" />
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.infoTitle}>{job.client_name}</Text>
+              <Text style={styles.infoTitle}>{job.client?.[0]?.full_name || 'N/A'}</Text>
               <Text style={styles.infoSubtitle}>View client details</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#999" />
@@ -193,54 +309,73 @@ export default function JobDetailScreen() {
         
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Racquet</Text>
-          <View style={styles.infoCard}>
+          <TouchableOpacity 
+            style={styles.infoCard}
+            onPress={() => {
+              if (job.racquet && job.racquet.length > 0) {
+                console.log('Navigating to racquet ID:', job.racquet[0].id);
+                router.push(`/(stringer)/racquets/${job.racquet[0].id}`);
+              }
+            }}
+          >
             <View style={[styles.infoIcon, { backgroundColor: '#E3F2FD' }]}>
               <Ionicons name="tennisball-outline" size={20} color="#1976D2" />
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.infoTitle}>{job.racquet_name}</Text>
-              <Text style={styles.infoSubtitle}>Brand: {job.racquet_name.split(' ')[0]}</Text>
+              <Text style={styles.infoTitle}>{job.racquet?.[0]?.brand?.[0]?.name || 'N/A'} {job.racquet?.[0]?.model?.[0]?.name || 'N/A'}</Text>
+              <Text style={styles.infoSubtitle}>View racquet details</Text>
             </View>
-          </View>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </TouchableOpacity>
         </View>
         
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Stringing Details</Text>
           <View style={styles.detailsGrid}>
             <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>String</Text>
-              <Text style={styles.detailValue}>{job.string_name}</Text>
+              <Text style={styles.detailLabel}>Main String</Text>
+              <Text style={styles.detailValue}>{stringingDetails?.main_string_model?.[0]?.name || 'N/A'}</Text>
+            </View>
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Cross String</Text>
+              <Text style={styles.detailValue}>{stringingDetails?.cross_string_model?.[0]?.name || 'N/A'}</Text>
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Tension (Mains)</Text>
-              <Text style={styles.detailValue}>{job.tension_main} lbs</Text>
+              <Text style={styles.detailValue}>{stringingDetails?.tension_main || 'N/A'} lbs</Text>
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Tension (Crosses)</Text>
-              <Text style={styles.detailValue}>{job.tension_cross} lbs</Text>
+              <Text style={styles.detailValue}>{stringingDetails?.tension_cross || 'N/A'} lbs</Text>
             </View>
             <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Date</Text>
+              <Text style={styles.detailLabel}>Due Date</Text>
               <Text style={styles.detailValue}>
-                {new Date(job.created_at).toLocaleDateString()}
+                {job.due_date ? new Date(job.due_date).toLocaleDateString() : 'N/A'}
+              </Text>
+            </View>
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Completed Date</Text>
+              <Text style={styles.detailValue}>
+                {job.completed_date ? new Date(job.completed_date).toLocaleDateString() : 'N/A'}
               </Text>
             </View>
           </View>
         </View>
         
-        {job.notes && (
+        {job.job_notes && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Notes</Text>
             <View style={styles.notesCard}>
-              <Text style={styles.notesText}>{job.notes}</Text>
+              <Text style={styles.notesText}>{job.job_notes}</Text>
             </View>
           </View>
         )}
         
         <View style={styles.timeline}>
           {statusFlow.map((status, index) => {
-            const isCompleted = statusFlow.indexOf(job.status) >= index;
-            const isCurrent = job.status === status;
+            const isCompleted = statusFlow.indexOf(job.job_status) >= index;
+            const isCurrent = job.job_status === status;
             const config = statusConfig[status];
             
             return (
@@ -259,15 +394,31 @@ export default function JobDetailScreen() {
                   />
                 </View>
                 <View style={styles.timelineContent}>
-                  <Text style={[
+                  <Text style={[ 
                     styles.timelineTitle,
                     { color: isCompleted ? '#1a1a1a' : '#999' }
                   ]}>
                     {config.label}
                   </Text>
-                  {job[`${status}_at` as keyof Job] && (
+                  {/* Safely access date properties based on status, using optional chaining and specific properties */}
+                  {status === 'pending' && job.created_at && (
                     <Text style={styles.timelineDate}>
-                      {new Date(job[`${status}_at` as keyof Job] as string).toLocaleString()}
+                      {new Date(job.created_at).toLocaleString()}
+                    </Text>
+                  )}
+                  {status === 'in_progress' && job.updated_at && (
+                    <Text style={styles.timelineDate}>
+                      {new Date(job.updated_at).toLocaleString()}
+                    </Text>
+                  )}
+                  {status === 'completed' && job.completed_date && (
+                    <Text style={styles.timelineDate}>
+                      {new Date(job.completed_date).toLocaleString()}
+                    </Text>
+                  )}
+                  {status === 'picked_up' && job.updated_at && (
+                    <Text style={styles.timelineDate}>
+                      {new Date(job.updated_at).toLocaleString()}
                     </Text>
                   )}
                 </View>
@@ -275,7 +426,7 @@ export default function JobDetailScreen() {
                   <View 
                     style={[
                       styles.timelineLine,
-                      { 
+                      {
                         backgroundColor: isCompleted ? config.color : '#E0E0E0',
                         opacity: isCompleted ? 1 : 0.5,
                       }
@@ -289,7 +440,7 @@ export default function JobDetailScreen() {
       </ScrollView>
       
       {nextStatus && (
-        <View style={styles.footer}>
+        <View style={[styles.footer, { bottom: insets.bottom }]}>
           <TouchableOpacity 
             style={[
               styles.actionButton,
@@ -347,6 +498,7 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flex: 1,
     padding: 16,
+    marginBottom: 8
   },
   menuButton: {
     padding: 8,
@@ -502,6 +654,9 @@ const styles = StyleSheet.create({
     width: 2,
   },
   footer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
     padding: 16,
     backgroundColor: '#fff',
     borderTopWidth: 1,
@@ -513,6 +668,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderRadius: 12,
+    marginBottom: 47,
   },
   actionIcon: {
     marginRight: 8,

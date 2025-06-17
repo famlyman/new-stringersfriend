@@ -31,7 +31,6 @@ export default function StringerTabsLayout() {
           ],
           tabBarLabelStyle: styles.labelStyle,
           tabBarItemStyle: styles.itemStyle,
-          headerShown: false,
           headerStyle: {
             backgroundColor: '#fff',
           },
@@ -85,6 +84,13 @@ export default function StringerTabsLayout() {
             tabBarIcon: ({ color }) => (
               <FontAwesome name="cog" size={24} color={color} />
             ),
+          }}
+        />
+        <Tabs.Screen
+          name="inventory/[id]/edit"
+          options={{
+            href: null,
+            headerShown: false,
           }}
         />
       </Tabs>

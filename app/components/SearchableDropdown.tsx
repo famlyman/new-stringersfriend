@@ -35,7 +35,7 @@ interface SearchableDropdownProps {
 
 export default function SearchableDropdown({
   label,
-  items,
+  items = [],
   value,
   onChange,
   searchFields,
