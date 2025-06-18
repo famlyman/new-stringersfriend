@@ -39,7 +39,7 @@ export default function StringerTabsLayout() {
           },
           headerTitleStyle: {
             fontWeight: '600',
-            color: COLORS.navy,
+            color: '#c7cbe6',
           },
           headerTitleAlign: 'center',
         }}
