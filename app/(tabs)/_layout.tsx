@@ -39,14 +39,7 @@ export default function TabLayout() {
           headerShown: false, 
         }}
       />
-      <Tabs.Screen
-        name="profile" 
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color, size }) => <Ionicons name="person" color={color} size={size} />,
-        }}
-      />
-      
+      {/* Profile tab removed/hiddden for stringers */}
     </Tabs>
   );
 }

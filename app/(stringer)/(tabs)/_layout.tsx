@@ -3,6 +3,7 @@ import { FontAwesome } from '@expo/vector-icons';
 import { useAuth } from '../../../src/contexts/AuthContext';
 import { View, StyleSheet, Platform, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { COLORS } from '../../../src/constants/colors';
 
 export default function StringerTabsLayout() {
   const { session } = useAuth();
@@ -20,11 +21,13 @@ export default function StringerTabsLayout() {
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       <Tabs
         screenOptions={{
-          tabBarActiveTintColor: '#007AFF',
-          tabBarInactiveTintColor: '#666',
+          tabBarActiveTintColor: COLORS.white,
+          tabBarInactiveTintColor: '#c7cbe6',
           tabBarStyle: [
             styles.tabBar,
             {
+              backgroundColor: COLORS.primary,
+              borderTopColor: COLORS.primary,
               height: tabBarHeight + bottomInset,
               paddingBottom: bottomInset,
             }
@@ -32,11 +35,11 @@ export default function StringerTabsLayout() {
           tabBarLabelStyle: styles.labelStyle,
           tabBarItemStyle: styles.itemStyle,
           headerStyle: {
-            backgroundColor: '#fff',
+            backgroundColor: COLORS.white,
           },
           headerTitleStyle: {
             fontWeight: '600',
-            color: '#000',
+            color: COLORS.navy,
           },
           headerTitleAlign: 'center',
         }}
@@ -92,7 +95,35 @@ export default function StringerTabsLayout() {
           }}
         />
         <Tabs.Screen
+          name="profile"
+          options={{
+            href: null,
+            headerShown: false,
+          }}
+        />
+        <Tabs.Screen
           name="inventory/[id]/edit"
+          options={{
+            href: null,
+            headerShown: false,
+          }}
+        />
+        <Tabs.Screen
+          name="notifications"
+          options={{
+            href: null,
+            headerShown: false,
+          }}
+        />
+        <Tabs.Screen
+          name="privacy"
+          options={{
+            href: null,
+            headerShown: false,
+          }}
+        />
+        <Tabs.Screen
+          name="help"
           options={{
             href: null,
             headerShown: false,
@@ -106,24 +137,16 @@ export default function StringerTabsLayout() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.white,
   },
   tabBar: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.primary,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: COLORS.primary,
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    ...(Platform.OS === 'android' ? {
-      elevation: 8,
-    } : {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: -2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-    }),
   },
   labelStyle: {
     fontSize: 12,

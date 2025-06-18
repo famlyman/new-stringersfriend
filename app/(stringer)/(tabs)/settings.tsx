@@ -2,10 +2,12 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { useAuth } from '../../../src/contexts/AuthContext';
 import { FontAwesome } from '@expo/vector-icons';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 
 export default function SettingsScreen() {
   const { signOut } = useAuth();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   const handleSignOut = async () => {
     try {
@@ -29,25 +31,25 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(stringer)/(tabs)/profile')}>
             <FontAwesome name="user" size={20} color="#666" />
             <Text style={styles.menuText}>Profile</Text>
             <FontAwesome name="chevron-right" size={16} color="#666" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(stringer)/(tabs)/notifications')}>
             <FontAwesome name="bell" size={20} color="#666" />
             <Text style={styles.menuText}>Notifications</Text>
             <FontAwesome name="chevron-right" size={16} color="#666" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(stringer)/(tabs)/privacy')}>
             <FontAwesome name="lock" size={20} color="#666" />
             <Text style={styles.menuText}>Privacy & Security</Text>
             <FontAwesome name="chevron-right" size={16} color="#666" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(stringer)/(tabs)/help')}>
             <FontAwesome name="question-circle" size={20} color="#666" />
             <Text style={styles.menuText}>Help & Support</Text>
             <FontAwesome name="chevron-right" size={16} color="#666" />
