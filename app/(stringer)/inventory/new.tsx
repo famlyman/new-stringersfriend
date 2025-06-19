@@ -14,7 +14,11 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../src/contexts/AuthContext';
 import { supabase } from '../../../src/lib/supabase';
-import { SearchableDropdown } from '../../../app/components/SearchableDropdown';
+import SearchableDropdown from '../../../app/components/SearchableDropdown';
+import { Card } from '../../../src/components/ui/Card';
+import { Text as UI_KIT_Text } from '../../../src/components/ui/Text';
+import { Button } from '../../../src/components/ui/Button';
+import { UI_KIT } from '../../../src/styles/uiKit';
 
 type FormData = {
   brand: string;
@@ -62,14 +66,14 @@ export default function NewInventoryScreen() {
     try {
       const { data, error } = await supabase
         .from('string_brand')
-        .select('string_id, string_brand')
-        .order('string_brand');
+        .select('id, name')
+        .order('name');
 
       if (error) throw error;
 
       setBrands(data.map(brand => ({
-        id: brand.string_id.toString(),
-        label: brand.string_brand
+        id: brand.id.toString(),
+        label: brand.name
       })));
     } catch (error) {
       console.error('Error fetching brands:', error);
@@ -80,16 +84,16 @@ export default function NewInventoryScreen() {
     try {
       const { data, error } = await supabase
         .from('string_model')
-        .select('model_id,model')
+        .select('id,name')
         .eq('brand_id', brandId)
-        .order('model', { ascending: true });
+        .order('name', { ascending: true });
 
       if (error) throw error;
 
       setModels(
         data.map((item) => ({
-          id: item.model_id.toString(),
-          label: item.model,
+          id: item.id.toString(),
+          label: item.name,
         }))
       );
     } catch (error) {
@@ -114,7 +118,7 @@ export default function NewInventoryScreen() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.brand || !formData.model || !formData.gauge || !formData.stock_quantity || !formData.cost_per_set) {
+    if (!formData.brand || !formData.model || !formData.gauge || !formData.stock_quantity || !formData.cost_per_set || !formData.color) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
@@ -125,15 +129,15 @@ export default function NewInventoryScreen() {
       const { error } = await supabase
         .from('string_inventory')
         .insert({
-          brand: formData.brand,
-          model: formData.model,
+          brand_id: parseInt(formData.brand),
+          model_id: parseInt(formData.model),
           gauge: formData.gauge,
-          color: formData.color || null,
+          color: formData.color || '',
           length_feet: parseInt(formData.length_feet),
           stock_quantity: parseInt(formData.stock_quantity),
           min_stock_level: parseInt(formData.min_stock_level),
           cost_per_set: parseFloat(formData.cost_per_set),
-          user_id: session?.user?.id,
+          stringer_id: session?.user?.id,
         });
 
       if (error) throw error;
@@ -148,88 +152,86 @@ export default function NewInventoryScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <Stack.Screen 
-        options={{
-          title: 'Add New String',
-          headerLeft: () => (
-            <TouchableOpacity 
-              onPress={() => router.back()}
-              style={{ marginLeft: 8 }}
-              disabled={isLoading}
-            >
-              <Ionicons name="arrow-back" size={24} color="#007AFF" />
-            </TouchableOpacity>
-          ),
-        }}
-      />
-
-      <View style={styles.form}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>String Details</Text>
-          
-          <View style={styles.row}>
-            <View style={styles.column}>
-              <Text style={styles.label}>Brand</Text>
-              <SearchableDropdown
-                label="Select Brand"
-                value={formData.brand}
-                onValueChange={handleBrandChange}
-                items={brands}
-                placeholder="Select brand"
-                searchFields={['label']}
-              />
-            </View>
-            <View style={styles.column}>
-              <Text style={styles.label}>Model</Text>
-              <SearchableDropdown
-                label="Select Model"
-                value={formData.model}
-                onValueChange={handleModelChange}
-                items={models}
-                placeholder="Select model"
-                disabled={!formData.brand}
-                searchFields={['label']}
-              />
-            </View>
+    <ScrollView style={{ backgroundColor: UI_KIT.colors.background }}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <View style={{ padding: UI_KIT.spacing.md }}>
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          marginBottom: UI_KIT.spacing.lg,
+        }}>
+          <TouchableOpacity onPress={() => router.replace('/(stringer)/(tabs)/inventory')}>
+            <Ionicons name="arrow-back" size={24} color={UI_KIT.colors.primary} />
+          </TouchableOpacity>
+          <UI_KIT_Text variant="h2" style={{ marginLeft: UI_KIT.spacing.md }}>
+            Add New String
+          </UI_KIT_Text>
+        </View>
+        <Card variant="elevated">
+          <UI_KIT_Text variant="h2" style={{ marginBottom: UI_KIT.spacing.md }}>
+            Add New String
+          </UI_KIT_Text>
+          <View style={{ marginBottom: UI_KIT.spacing.md }}>
+            <UI_KIT_Text variant="label" style={{ marginBottom: UI_KIT.spacing.xs }}>Brand</UI_KIT_Text>
+            <SearchableDropdown
+              label="Select Brand"
+              value={formData.brand}
+              onChange={handleBrandChange}
+              items={brands}
+              placeholder="Select brand"
+              searchFields={['label']}
+              required
+              disabled={loading}
+            />
           </View>
-
-          <View style={styles.row}>
-            <View style={styles.column}>
-              <Text style={styles.label}>Gauge</Text>
+          <View style={{ marginBottom: UI_KIT.spacing.md }}>
+            <UI_KIT_Text variant="label" style={{ marginBottom: UI_KIT.spacing.xs }}>Model</UI_KIT_Text>
+            <SearchableDropdown
+              label="Select Model"
+              value={formData.model}
+              onChange={handleModelChange}
+              items={models}
+              placeholder="Select model"
+              disabled={!formData.brand || loading}
+              searchFields={['label']}
+              required
+            />
+          </View>
+          <View style={{ flexDirection: 'row', gap: UI_KIT.spacing.md, marginBottom: UI_KIT.spacing.md }}>
+            <View style={{ flex: 1 }}>
+              <UI_KIT_Text variant="label" style={{ marginBottom: UI_KIT.spacing.xs }}>Gauge</UI_KIT_Text>
               <TextInput
-                style={styles.input}
+                style={UI_KIT.input.base}
                 value={formData.gauge}
                 onChangeText={(text) => handleInputChange('gauge', text)}
                 placeholder="e.g., 1.25"
                 keyboardType="decimal-pad"
               />
             </View>
-            <View style={styles.column}>
-              <Text style={styles.label}>Color</Text>
+            <View style={{ flex: 1 }}>
+              <UI_KIT_Text variant="label" style={{ marginBottom: UI_KIT.spacing.xs }}>Color</UI_KIT_Text>
               <TextInput
-                style={styles.input}
+                style={UI_KIT.input.base}
                 value={formData.color}
                 onChangeText={(text) => handleInputChange('color', text)}
                 placeholder="e.g., Natural"
               />
             </View>
           </View>
-
-          <View style={styles.row}>
-            <View style={styles.column}>
-              <Text style={styles.label}>Length (feet)</Text>
+          <View style={{ flexDirection: 'row', gap: UI_KIT.spacing.md, marginBottom: UI_KIT.spacing.md }}>
+            <View style={{ flex: 1 }}>
+              <UI_KIT_Text variant="label" style={{ marginBottom: UI_KIT.spacing.xs }}>Length (feet)</UI_KIT_Text>
               <TextInput
-                style={styles.input}
+                style={UI_KIT.input.base}
                 value={formData.length_feet}
                 onChangeText={(text) => handleInputChange('length_feet', text)}
                 keyboardType="numeric"
               />
             </View>
-            <View style={styles.column}>
-              <Text style={styles.label}>Stock Quantity</Text>
+            <View style={{ flex: 1 }}>
+              <UI_KIT_Text variant="label" style={{ marginBottom: UI_KIT.spacing.xs }}>Stock Quantity</UI_KIT_Text>
               <TextInput
-                style={styles.input}
+                style={UI_KIT.input.base}
                 value={formData.stock_quantity}
                 onChangeText={(text) => handleInputChange('stock_quantity', text)}
                 placeholder="0"
@@ -237,21 +239,20 @@ export default function NewInventoryScreen() {
               />
             </View>
           </View>
-
-          <View style={styles.row}>
-            <View style={styles.column}>
-              <Text style={styles.label}>Min Stock Level</Text>
+          <View style={{ flexDirection: 'row', gap: UI_KIT.spacing.md, marginBottom: UI_KIT.spacing.md }}>
+            <View style={{ flex: 1 }}>
+              <UI_KIT_Text variant="label" style={{ marginBottom: UI_KIT.spacing.xs }}>Min Stock Level</UI_KIT_Text>
               <TextInput
-                style={styles.input}
+                style={UI_KIT.input.base}
                 value={formData.min_stock_level}
                 onChangeText={(text) => handleInputChange('min_stock_level', text)}
                 keyboardType="numeric"
               />
             </View>
-            <View style={styles.column}>
-              <Text style={styles.label}>Cost per Set ($)</Text>
+            <View style={{ flex: 1 }}>
+              <UI_KIT_Text variant="label" style={{ marginBottom: UI_KIT.spacing.xs }}>Cost per Set ($)</UI_KIT_Text>
               <TextInput
-                style={styles.input}
+                style={UI_KIT.input.base}
                 value={formData.cost_per_set}
                 onChangeText={(text) => handleInputChange('cost_per_set', text)}
                 placeholder="0.00"
@@ -259,17 +260,15 @@ export default function NewInventoryScreen() {
               />
             </View>
           </View>
-        </View>
-
-        <TouchableOpacity 
-          style={[styles.button, loading && styles.buttonDisabled]} 
-          onPress={handleSubmit}
-          disabled={loading}
-        >
-          <Text style={styles.buttonText}>
-            {loading ? 'Adding...' : 'Add to Inventory'}
-          </Text>
-        </TouchableOpacity>
+          <Button
+            title={loading ? 'Adding...' : 'Add to Inventory'}
+            onPress={handleSubmit}
+            loading={loading}
+            variant="primary"
+            size="large"
+            style={{ marginTop: UI_KIT.spacing.md }}
+          />
+        </Card>
       </View>
     </ScrollView>
   );

@@ -190,7 +190,7 @@ export default function JobsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top','left','right']}>
       <View style={styles.header}>
-        <Text variant="h2" color={UI_KIT.colors.gray}>Jobs</Text>
+        <Text variant="h2" style={styles.headerTitle}>Jobs</Text>
         <Link href="/(stringer)/(tabs)/jobs/new" asChild>
           <TouchableOpacity style={styles.addButton}>
             <Ionicons name="add" size={24} color={UI_KIT.colors.white} />
@@ -244,25 +244,34 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
-    padding: UI_KIT.spacing.md,
+    paddingHorizontal: UI_KIT.spacing.md,
+    paddingTop: UI_KIT.spacing.md,
+    paddingBottom: UI_KIT.spacing.sm,
     backgroundColor: UI_KIT.colors.navy,
     borderBottomWidth: 1,
     borderBottomColor: UI_KIT.colors.primary,
-    paddingBottom: 30,
+  },
+  headerTitle: {
+    color: UI_KIT.colors.gray,
+    fontWeight: 'bold',
+    flex: 1,
+    textAlign: 'center',
   },
   addButton: {
-    backgroundColor: UI_KIT.colors.primary,
+    backgroundColor: UI_KIT.colors.gray,
     width: 36,
     height: 36,
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
+    marginLeft: 8,
   },
   addButtonPlaceholder: {
     width: 36,
     height: 36,
+    marginLeft: 8,
   },
   listContent: {
     paddingTop: UI_KIT.spacing.md,

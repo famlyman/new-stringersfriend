@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, FlatList } from 'react-native';
+import { View, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, FlatList } from 'react-native';
 import { useAuth } from '../../../src/contexts/AuthContext';
 import { supabase } from '../../../src/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { Link, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Text } from '../../../src/components/ui/Text';
+import { UI_KIT } from '../../../src/styles/uiKit';
 
 type Client = {
   id: string;
@@ -63,20 +65,33 @@ export default function ClientsScreen() {
     fetchClients();
   }, [session]);
 
+  const MINI_CARD_STYLE = {
+    backgroundColor: UI_KIT.colors.white,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
+    marginBottom: UI_KIT.spacing.md,
+    padding: UI_KIT.spacing.md,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+  };
+
   const renderClientItem = ({ item }: { item: Client }) => (
     <TouchableOpacity
-      style={styles.infoCard}
+      style={MINI_CARD_STYLE}
+      activeOpacity={0.7}
       onPress={() => router.push(`/(stringer)/clients/${item.id}`)}
     >
-      <View style={styles.infoIcon}>
-        <Ionicons name="person-outline" size={20} color="#007AFF" />
+      <View style={{ flex: 1 }}>
+        <Text variant="h5" style={{ marginBottom: 4 }}>{item.full_name}</Text>
+        {item.email && <Text variant="body" color={UI_KIT.colors.gray}>{item.email}</Text>}
+        {item.phone && <Text variant="body" color={UI_KIT.colors.gray}>{formatPhoneNumber(item.phone)}</Text>}
       </View>
-      <View style={styles.infoContent}>
-        <Text style={styles.infoTitle}>{item.full_name}</Text>
-        {item.email && <Text style={styles.infoSubtitle}>{item.email}</Text>}
-        {item.phone && <Text style={styles.infoSubtitle}>{formatPhoneNumber(item.phone)}</Text>}
-      </View>
-      <Ionicons name="chevron-forward" size={24} color="#C7C7CC" />
+      <Ionicons name="chevron-forward" size={20} color={UI_KIT.colors.gray} />
     </TouchableOpacity>
   );
 
@@ -105,10 +120,10 @@ export default function ClientsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top','left','right']}>
       <View style={styles.header}>
-        <Text style={styles.title}>Clients</Text>
+        <Text variant="h2" style={styles.headerTitle}>Clients</Text>
         <Link href="/(stringer)/clients/new" asChild>
           <TouchableOpacity style={styles.addButton}>
-            <Ionicons name="add" size={24} color="white" />
+            <Ionicons name="add" size={24} color={UI_KIT.colors.white} />
           </TouchableOpacity>
         </Link>
       </View>
@@ -157,63 +172,32 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#fff',
+    paddingHorizontal: UI_KIT.spacing.md,
+    paddingTop: UI_KIT.spacing.md,
+    paddingBottom: UI_KIT.spacing.sm,
+    backgroundColor: UI_KIT.colors.navy,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: UI_KIT.colors.primary,
   },
-  title: {
-    fontSize: 24,
+  headerTitle: {
+    color: UI_KIT.colors.gray,
     fontWeight: 'bold',
-    color: '#333',
+    flex: 1,
+    textAlign: 'center',
   },
   addButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: UI_KIT.colors.gray,
     width: 36,
     height: 36,
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
+    marginLeft: 8,
   },
   listContent: {
     padding: 16,
-  },
-  infoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
-  },
-  infoIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f0f7ff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  infoContent: {
-    flex: 1,
-  },
-  infoTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
-  },
-  infoSubtitle: {
-    fontSize: 15,
-    color: '#888',
   },
   emptyState: {
     flex: 1,

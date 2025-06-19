@@ -16,6 +16,8 @@ interface CustomHeaderProps {
   router?: any;
   deleteJob?: () => void;
   children?: React.ReactNode;
+  titleStyle?: any;
+  grayNav?: boolean;
 }
 
 const CustomHeader: React.FC<CustomHeaderProps> = ({
@@ -30,58 +32,60 @@ const CustomHeader: React.FC<CustomHeaderProps> = ({
   router,
   deleteJob,
   children,
+  grayNav = false,
+  titleStyle,
 }) => {
+  const headerBg = grayNav ? UI_KIT.colors.gray : UI_KIT.colors.navy;
+  const titleColor = grayNav ? UI_KIT.colors.navy : UI_KIT.colors.white;
+  const iconColor = grayNav ? UI_KIT.colors.navy : UI_KIT.colors.primary;
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: headerBg }] }>
       <StatusBar 
-        barStyle="dark-content" 
-        backgroundColor="white"
+        barStyle={grayNav ? 'dark-content' : 'light-content'}
+        backgroundColor={headerBg}
         translucent={false}
       />
-      <View style={[
-        styles.header,
-        { paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 }
-      ]}>
+      <View style={[styles.header, { backgroundColor: headerBg, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 }] }>
         {leftContent ? leftContent : onBack ? (
-        <TouchableOpacity onPress={onBack} style={{ padding: 8 }}>
-          <Ionicons name="arrow-back" size={24} color={UI_KIT.colors.primary} />
-        </TouchableOpacity>
-      ) : (
-        <View style={{ width: 32 }} />
-      )}
-      <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
-        {title}
-      </Text>
-      {rightContent ? rightContent : onMenu ? (
-        <Menu
-          visible={!!menuVisible}
-          onDismiss={closeMenu}
-          anchor={
-            <TouchableOpacity onPress={onMenu} style={{ padding: 8 }}>
-              <Ionicons name="ellipsis-vertical" size={20} color={UI_KIT.colors.primary} />
-            </TouchableOpacity>
-          }
-        >
-          <Menu.Item
-            onPress={() => {
-              closeMenu && closeMenu();
-              if (job?.id && router) {
-                router.push(`/(stringer)/(tabs)/jobs/${job.id}/edit`);
-              }
-            }}
-            title="Edit Job"
-          />
-          <Menu.Item
-            onPress={() => {
-              closeMenu && closeMenu();
-              if (job && deleteJob) deleteJob();
-            }}
-            title="Delete Job"
-          />
-        </Menu>
-      ) : (
-        <View style={{ width: 32 }} />
-      )}
+          <TouchableOpacity onPress={onBack} style={{ padding: 8 }}>
+            <Ionicons name="arrow-back" size={24} color={iconColor} />
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 32 }} />
+        )}
+        <Text style={[styles.title, { color: titleColor }, titleStyle]} numberOfLines={1} ellipsizeMode="tail">
+          {title}
+        </Text>
+        {rightContent ? rightContent : onMenu ? (
+          <Menu
+            visible={!!menuVisible}
+            onDismiss={closeMenu}
+            anchor={
+              <TouchableOpacity onPress={onMenu} style={{ padding: 8 }}>
+                <Ionicons name="ellipsis-vertical" size={20} color={iconColor} />
+              </TouchableOpacity>
+            }
+          >
+            <Menu.Item
+              onPress={() => {
+                closeMenu && closeMenu();
+                if (job?.id && router) {
+                  router.push(`/(stringer)/(tabs)/jobs/${job.id}/edit`);
+                }
+              }}
+              title="Edit Job"
+            />
+            <Menu.Item
+              onPress={() => {
+                closeMenu && closeMenu();
+                if (job && deleteJob) deleteJob();
+              }}
+              title="Delete Job"
+            />
+          </Menu>
+        ) : (
+          <View style={{ width: 32 }} />
+        )}
         {children}
       </View>
     </View>

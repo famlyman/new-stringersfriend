@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ActivityIndicator, Alert, TextInput, Text, TouchableOpacity, ScrollView, StatusBar } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Alert, TextInput, TouchableOpacity, ScrollView, StatusBar, KeyboardAvoidingView, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import CustomHeader from '../../../../src/components/CustomHeader';
+import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Text as UI_KIT_Text } from '../../../../src/components/ui/Text';
+import { UI_KIT } from '../../../../src/styles/uiKit';
+import SearchableDropdown from '../../../components/SearchableDropdown';
 import { useAuth } from '../../../../src/contexts/AuthContext';
 import { supabase } from '../../../../src/lib/supabase';
-import SearchableDropdown from '../../../components/SearchableDropdown';
 
 type FormData = {
   brand: string;
@@ -20,7 +23,6 @@ type FormData = {
 export default function EditInventoryScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
-  const { session } = useAuth();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [brands, setBrands] = useState<Array<{ id: string; label: string }>>([]);
@@ -203,130 +205,142 @@ export default function EditInventoryScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top','left','right']}>
       <StatusBar 
-        barStyle="dark-content" 
-        backgroundColor="#fff"
+        barStyle="light-content" 
+        backgroundColor={UI_KIT.colors.navy}
         translucent={false}
       />
-      <CustomHeader
-        title="Edit String"
-        onBack={() => router.back()}
-      />
-
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollViewContent}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>String Details</Text>
-          <View style={styles.row}>
-            <View style={styles.column}>
-              <Text style={styles.label}>Brand</Text>
-              <SearchableDropdown
-                label="Select Brand"
-                value={formData.brand}
-                onChange={handleBrandChange}
-                items={brands}
-                placeholder="Select brand"
-                searchFields={['label']}
-              />
-            </View>
-            <View style={styles.column}>
-              <Text style={styles.label}>Model</Text>
-              <SearchableDropdown
-                label="Select Model"
-                value={formData.model}
-                onChange={handleModelChange}
-                items={models}
-                placeholder="Select model"
-                disabled={!formData.brand}
-                searchFields={['label']}
-              />
-            </View>
-          </View>
-
-          <View style={styles.row}>
-            <View style={styles.column}>
-              <Text style={styles.label}>Gauge</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.gauge}
-                onChangeText={(text) => setFormData((prev) => ({ ...prev, gauge: text }))}
-                placeholder="e.g., 1.25"
-                keyboardType="decimal-pad"
-              />
-            </View>
-            <View style={styles.column}>
-              <Text style={styles.label}>Color</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.color}
-                onChangeText={(text) => setFormData((prev) => ({ ...prev, color: text }))}
-                placeholder="e.g., Black"
-              />
-            </View>
-          </View>
-
-          <View style={styles.row}>
-            <View style={styles.column}>
-              <Text style={styles.label}>Length (feet)</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.length_feet}
-                onChangeText={(text) => setFormData((prev) => ({ ...prev, length_feet: text }))}
-                placeholder="e.g., 660"
-                keyboardType="numeric"
-              />
-            </View>
-            <View style={styles.column}>
-              <Text style={styles.label}>Stock Quantity</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.stock_quantity}
-                onChangeText={(text) => setFormData((prev) => ({ ...prev, stock_quantity: text }))}
-                placeholder="e.g., 10"
-                keyboardType="numeric"
-              />
-            </View>
-          </View>
-
-          <View style={styles.row}>
-            <View style={styles.column}>
-              <Text style={styles.label}>Min Stock Level</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.min_stock_level}
-                onChangeText={(text) => setFormData((prev) => ({ ...prev, min_stock_level: text }))}
-                placeholder="e.g., 1"
-                keyboardType="numeric"
-              />
-            </View>
-            <View style={styles.column}>
-              <Text style={styles.label}>Cost per Set ($)</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.cost_per_set}
-                onChangeText={(text) => setFormData((prev) => ({ ...prev, cost_per_set: text }))}
-                placeholder="e.g., 12.99"
-                keyboardType="decimal-pad"
-              />
-            </View>
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
-          onPress={handleSubmit}
-          disabled={submitting}
-        >
-          <Text style={styles.submitButtonText}>
-            {submitting ? 'Updating...' : 'Update String'}
-          </Text>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={UI_KIT.colors.gray} />
         </TouchableOpacity>
-      </ScrollView>
-    </View>
+        <UI_KIT_Text variant="h2" style={styles.headerTitle}>Edit String</UI_KIT_Text>
+        <View style={{ width: 36, marginLeft: 8 }} />
+      </View>
+      <View style={{ backgroundColor: 'red', padding: 16, alignItems: 'center' }}>
+        <UI_KIT_Text variant="h2" style={{ color: 'white' }}>DEBUG: THIS IS THE CORRECT EDIT FILE</UI_KIT_Text>
+      </View>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={90}
+      >
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollViewContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.section}>
+            <UI_KIT_Text variant="h2" style={styles.sectionTitle}>String Details</UI_KIT_Text>
+            <View style={styles.row}>
+              <View style={styles.column}>
+                <UI_KIT_Text variant="h3" style={styles.label}>Brand</UI_KIT_Text>
+                <SearchableDropdown
+                  label="Select Brand"
+                  value={formData.brand}
+                  onChange={handleBrandChange}
+                  items={brands}
+                  placeholder="Select brand"
+                  searchFields={['label']}
+                />
+              </View>
+              <View style={styles.column}>
+                <UI_KIT_Text variant="h3" style={styles.label}>Model</UI_KIT_Text>
+                <SearchableDropdown
+                  label="Select Model"
+                  value={formData.model}
+                  onChange={handleModelChange}
+                  items={models}
+                  placeholder="Select model"
+                  disabled={!formData.brand}
+                  searchFields={['label']}
+                />
+              </View>
+            </View>
+
+            <View style={styles.row}>
+              <View style={styles.column}>
+                <UI_KIT_Text variant="h3" style={styles.label}>Gauge</UI_KIT_Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.gauge}
+                  onChangeText={(text) => setFormData((prev) => ({ ...prev, gauge: text }))}
+                  placeholder="e.g., 1.25"
+                  keyboardType="decimal-pad"
+                />
+              </View>
+              <View style={styles.column}>
+                <UI_KIT_Text variant="h3" style={styles.label}>Color</UI_KIT_Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.color}
+                  onChangeText={(text) => setFormData((prev) => ({ ...prev, color: text }))}
+                  placeholder="e.g., Black"
+                />
+              </View>
+            </View>
+
+            <View style={styles.row}>
+              <View style={styles.column}>
+                <UI_KIT_Text variant="h3" style={styles.label}>Length (feet)</UI_KIT_Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.length_feet}
+                  onChangeText={(text) => setFormData((prev) => ({ ...prev, length_feet: text }))}
+                  placeholder="e.g., 660"
+                  keyboardType="numeric"
+                />
+              </View>
+              <View style={styles.column}>
+                <UI_KIT_Text variant="h3" style={styles.label}>Stock Quantity</UI_KIT_Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.stock_quantity}
+                  onChangeText={(text) => setFormData((prev) => ({ ...prev, stock_quantity: text }))}
+                  placeholder="e.g., 10"
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+
+            <View style={styles.row}>
+              <View style={styles.column}>
+                <UI_KIT_Text variant="h3" style={styles.label}>Min Stock Level</UI_KIT_Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.min_stock_level}
+                  onChangeText={(text) => setFormData((prev) => ({ ...prev, min_stock_level: text }))}
+                  placeholder="e.g., 1"
+                  keyboardType="numeric"
+                />
+              </View>
+              <View style={styles.column}>
+                <UI_KIT_Text variant="h3" style={styles.label}>Cost per Set ($)</UI_KIT_Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.cost_per_set}
+                  onChangeText={(text) => setFormData((prev) => ({ ...prev, cost_per_set: text }))}
+                  placeholder="e.g., 12.99"
+                  keyboardType="decimal-pad"
+                />
+              </View>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
+            onPress={handleSubmit}
+            disabled={submitting}
+          >
+            <UI_KIT_Text variant="h3" style={styles.submitButtonText}>
+              {submitting ? 'Updating...' : 'Update String'}
+            </UI_KIT_Text>
+          </TouchableOpacity>
+          <View style={{ height: 32 }} />
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
@@ -361,9 +375,6 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
     marginBottom: 16,
   },
   row: {
@@ -375,9 +386,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#666',
     marginBottom: 8,
   },
   input: {
@@ -403,5 +411,30 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: UI_KIT.spacing.md,
+    paddingTop: UI_KIT.spacing.md,
+    paddingBottom: UI_KIT.spacing.sm,
+    backgroundColor: UI_KIT.colors.navy,
+    borderBottomWidth: 1,
+    borderBottomColor: UI_KIT.colors.primary,
+  },
+  headerTitle: {
+    color: UI_KIT.colors.gray,
+    fontWeight: 'bold',
+    flex: 1,
+    textAlign: 'center',
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
   },
 }); 
