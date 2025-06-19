@@ -1,0 +1,116 @@
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Menu } from 'react-native-paper';
+import { UI_KIT } from '../styles/uiKit';
+
+interface CustomHeaderProps {
+  title: string;
+  onBack?: () => void;
+  onMenu?: () => void;
+  menuVisible?: boolean;
+  closeMenu?: () => void;
+  rightContent?: React.ReactNode;
+  leftContent?: React.ReactNode;
+  job?: any;
+  router?: any;
+  deleteJob?: () => void;
+  children?: React.ReactNode;
+}
+
+const CustomHeader: React.FC<CustomHeaderProps> = ({
+  title,
+  onBack,
+  onMenu,
+  menuVisible,
+  closeMenu,
+  rightContent,
+  leftContent,
+  job,
+  router,
+  deleteJob,
+  children,
+}) => {
+  return (
+    <View style={styles.container}>
+      <StatusBar 
+        barStyle="dark-content" 
+        backgroundColor="white"
+        translucent={false}
+      />
+      <View style={[
+        styles.header,
+        { paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 }
+      ]}>
+        {leftContent ? leftContent : onBack ? (
+        <TouchableOpacity onPress={onBack} style={{ padding: 8 }}>
+          <Ionicons name="arrow-back" size={24} color={UI_KIT.colors.primary} />
+        </TouchableOpacity>
+      ) : (
+        <View style={{ width: 32 }} />
+      )}
+      <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
+        {title}
+      </Text>
+      {rightContent ? rightContent : onMenu ? (
+        <Menu
+          visible={!!menuVisible}
+          onDismiss={closeMenu}
+          anchor={
+            <TouchableOpacity onPress={onMenu} style={{ padding: 8 }}>
+              <Ionicons name="ellipsis-vertical" size={20} color={UI_KIT.colors.primary} />
+            </TouchableOpacity>
+          }
+        >
+          <Menu.Item
+            onPress={() => {
+              closeMenu && closeMenu();
+              if (job?.id && router) {
+                router.push(`/(stringer)/(tabs)/jobs/${job.id}/edit`);
+              }
+            }}
+            title="Edit Job"
+          />
+          <Menu.Item
+            onPress={() => {
+              closeMenu && closeMenu();
+              if (job && deleteJob) deleteJob();
+            }}
+            title="Delete Job"
+          />
+        </Menu>
+      ) : (
+        <View style={{ width: 32 }} />
+      )}
+        {children}
+      </View>
+    </View>
+  );
+};
+
+const styles = {
+  container: {
+    backgroundColor: UI_KIT.colors.navy,
+  },
+  header: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    backgroundColor: UI_KIT.colors.navy,
+    paddingTop: 0,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginTop: 0,
+  },
+  title: {
+    color: UI_KIT.colors.white,
+    fontWeight: '600' as const,
+    fontSize: 18,
+    flex: 1,
+    textAlign: 'center' as const,
+    marginLeft: 0,
+  } as const,
+};
+
+export { CustomHeader };
+export default CustomHeader;

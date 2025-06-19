@@ -53,7 +53,7 @@ export default function JobsLayout() {
       <Stack.Screen
         name="[id]"
         options={{
-          headerShown: true,
+          headerShown: false,
           title: 'Job Details',
           headerStyle: {
             backgroundColor: '#fff',

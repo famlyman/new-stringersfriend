@@ -1,13 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, Platform, StatusBar } from 'react-native';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { JobStatus, statusConfig } from '../../../../src/types/job';
 import { supabase } from '../../../../src/lib/supabase';
 import { useAuth } from '../../../../src/contexts/AuthContext';
 import { normalizeToArray } from '../../../../src/utils/dataNormalization';
 import { Menu } from 'react-native-paper';
+import CustomHeader from '../../../../src/components/CustomHeader';
+import { UI_KIT } from '../../../../src/styles/uiKit';
 
 // Define JobDetail explicitly with all necessary fields
 interface JobDetail {
@@ -57,6 +59,10 @@ export default function JobDetailScreen() {
 
   const openMenu = () => setMenuVisible(true);
   const closeMenu = () => setMenuVisible(false);
+  
+  const handleBack = () => {
+    router.back();
+  };
 
   useEffect(() => {
     if (id) {
@@ -224,62 +230,35 @@ export default function JobDetailScreen() {
 
   return (
     <View style={styles.container}>
+      <StatusBar 
+        barStyle="dark-content" 
+        backgroundColor="white"
+        translucent={false}
+      />
       <Stack.Screen 
         options={{
-          title: 'Job Details',
-          headerShown: true,
-          headerLeft: () => (
-            <TouchableOpacity 
-              style={styles.menuButton}
-              onPress={() => router.push('/(stringer)/(tabs)/jobs')}
-            >
-              <Ionicons name="arrow-back" size={24} color="#007AFF" />
-            </TouchableOpacity>
-          ),
-          headerRight: () => (
-            <Menu
-              visible={menuVisible}
-              onDismiss={closeMenu}
-              anchor={
-                <TouchableOpacity
-                  style={styles.menuButton}
-                  onPress={openMenu}
-                >
-                  <Ionicons name="ellipsis-vertical" size={20} color="#007AFF" />
-                </TouchableOpacity>
-              }
-            >
-              <Menu.Item
-                onPress={() => {
-                  closeMenu();
-                  if (job?.id) {
-                    router.push(`/(stringer)/(tabs)/jobs/${job.id}/edit`);
-                  } else {
-                    Alert.alert('Error', 'Job ID not available for editing.');
-                    console.error('Attempted to edit job with no ID.');
-                  }
-                }}
-                title="Edit Job"
-              />
-              <Menu.Item
-                onPress={() => {
-                  closeMenu();
-                  deleteJob();
-                }}
-                title="Delete Job"
-              />
-            </Menu>
-          ),
+          headerShown: false,
         }} 
       />
+      <CustomHeader
+        title="Job Details"
+        onBack={handleBack}
+        onMenu={openMenu}
+        menuVisible={menuVisible}
+        closeMenu={closeMenu}
+        job={job}
+        router={router}
+        deleteJob={deleteJob}
+      />
       
-      <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom', 'left', 'right']}>
-        <ScrollView 
-          style={styles.scrollView} 
-          contentContainerStyle={styles.scrollViewContent}
-          automaticallyAdjustKeyboardInsets={false}
-          automaticallyAdjustsScrollIndicatorInsets={false}
-        >
+      <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
+        <View style={styles.contentContainer}>
+          <ScrollView 
+            style={styles.scrollView} 
+            contentContainerStyle={styles.scrollViewContent}
+            automaticallyAdjustKeyboardInsets={false}
+            automaticallyAdjustsScrollIndicatorInsets={false}
+          >
           <View style={styles.header}>
             <View style={styles.statusBadge}>
               <View style={[styles.statusIndicator, { backgroundColor: statusInfo.color }]} />
@@ -440,36 +419,37 @@ export default function JobDetailScreen() {
               );
             })}
           </View>
-        </ScrollView>
-        
-        {nextStatus && (
-          <View style={[styles.footer, { bottom: insets.bottom }]}>
-            <TouchableOpacity 
-              style={[
-                styles.actionButton,
-                { backgroundColor: statusConfig[nextStatus].color }
-              ]}
-              onPress={() => updateStatus(nextStatus)}
-              disabled={updating}
-            >
-              {updating ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Ionicons 
-                    name={statusConfig[nextStatus].icon} 
-                    size={20} 
-                    color="#fff" 
-                    style={styles.actionIcon}
-                  />
-                  <Text style={styles.actionText}>
-                    Mark as {statusConfig[nextStatus].label}
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-        )}
+          </ScrollView>
+          
+          {nextStatus && (
+            <View style={[styles.footer, { bottom: insets.bottom }]}>
+              <TouchableOpacity 
+                style={[
+                  styles.actionButton,
+                  { backgroundColor: statusConfig[nextStatus].color }
+                ]}
+                onPress={() => updateStatus(nextStatus)}
+                disabled={updating}
+              >
+                {updating ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons 
+                      name={statusConfig[nextStatus].icon} 
+                      size={20} 
+                      color="#fff" 
+                      style={styles.actionIcon}
+                    />
+                    <Text style={styles.actionText}>
+                      Mark as {statusConfig[nextStatus].label}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
       </SafeAreaView>
     </View>
   );
@@ -478,8 +458,9 @@ export default function JobDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
   },
+
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -499,6 +480,15 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 16,
   },
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fff',
+    marginTop: 0,
+  },
+  contentContainer: {
+    flex: 1,
+    paddingTop: 8,
+  },
   scrollView: {
     flex: 1,
   },
@@ -510,15 +500,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
     padding: 16,
+    paddingTop: 8,
     backgroundColor: '#fff',
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
   statusBadge: {
     flexDirection: 'row',
@@ -665,8 +651,13 @@ const styles = StyleSheet.create({
     width: 2,
     backgroundColor: '#E0E0E0',
   },
+  headerButton: {
+    marginHorizontal: 16,
+    padding: 8,
+    borderRadius: 20,
+  },
   menuButton: {
-    marginRight: 15,
+    marginHorizontal: 16,
   },
   footer: {
     position: 'absolute',

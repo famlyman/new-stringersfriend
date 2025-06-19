@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ActivityIndicator, Alert, TextInput, Text, TouchableOpacity } from 'react-native';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { View, StyleSheet, ActivityIndicator, Alert, TextInput, Text, TouchableOpacity, ScrollView, StatusBar } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import CustomHeader from '../../../../src/components/CustomHeader';
 import { useAuth } from '../../../../src/contexts/AuthContext';
 import { supabase } from '../../../../src/lib/supabase';
-import { SearchableDropdown } from '../../../components/SearchableDropdown';
+import SearchableDropdown from '../../../components/SearchableDropdown';
 
 type FormData = {
   brand: string;
@@ -124,9 +124,44 @@ export default function EditInventoryScreen() {
     setFormData((prev) => ({ ...prev, model: value }));
   };
 
+  const validateForm = () => {
+    const requiredFields = [
+      { field: 'brand', label: 'Brand' },
+      { field: 'model', label: 'Model' },
+      { field: 'gauge', label: 'Gauge' },
+      { field: 'stock_quantity', label: 'Stock Quantity' },
+      { field: 'cost_per_set', label: 'Cost per Set' },
+    ];
+
+    for (const { field, label } of requiredFields) {
+      if (!formData[field as keyof FormData]) {
+        Alert.alert('Error', `Please fill in the ${label} field`);
+        return false;
+      }
+    }
+
+    // Validate numeric fields
+    const numericFields = [
+      { field: 'gauge', label: 'Gauge' },
+      { field: 'length_feet', label: 'Length (feet)' },
+      { field: 'stock_quantity', label: 'Stock Quantity' },
+      { field: 'min_stock_level', label: 'Min Stock Level' },
+      { field: 'cost_per_set', label: 'Cost per Set' },
+    ];
+
+    for (const { field, label } of numericFields) {
+      const value = formData[field as keyof FormData];
+      if (isNaN(Number(value))) {
+        Alert.alert('Error', `${label} must be a valid number`);
+        return false;
+      }
+    }
+
+    return true;
+  };
+
   const handleSubmit = async () => {
-    if (!formData.brand || !formData.model || !formData.gauge || !formData.stock_quantity || !formData.cost_per_set) {
-      Alert.alert('Error', 'Please fill in all required fields');
+    if (!validateForm()) {
       return;
     }
 
@@ -169,22 +204,21 @@ export default function EditInventoryScreen() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen
-        options={{
-          title: 'Edit String',
-          headerLeft: () => (
-            <Ionicons
-              name="close"
-              size={24}
-              color="#FF3B30"
-              onPress={() => router.back()}
-              style={styles.closeButton}
-            />
-          ),
-        }}
+      <StatusBar 
+        barStyle="dark-content" 
+        backgroundColor="#fff"
+        translucent={false}
+      />
+      <CustomHeader
+        title="Edit String"
+        onBack={() => router.back()}
       />
 
-      <View style={styles.form}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollViewContent}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>String Details</Text>
           <View style={styles.row}>
@@ -193,7 +227,7 @@ export default function EditInventoryScreen() {
               <SearchableDropdown
                 label="Select Brand"
                 value={formData.brand}
-                onValueChange={handleBrandChange}
+                onChange={handleBrandChange}
                 items={brands}
                 placeholder="Select brand"
                 searchFields={['label']}
@@ -204,7 +238,7 @@ export default function EditInventoryScreen() {
               <SearchableDropdown
                 label="Select Model"
                 value={formData.model}
-                onValueChange={handleModelChange}
+                onChange={handleModelChange}
                 items={models}
                 placeholder="Select model"
                 disabled={!formData.brand}
@@ -291,15 +325,16 @@ export default function EditInventoryScreen() {
             {submitting ? 'Updating...' : 'Update String'}
           </Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
+    paddingTop: 0,
   },
   loadingContainer: {
     flex: 1,
@@ -307,12 +342,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fff',
   },
-  closeButton: {
-    marginLeft: 16,
-  },
-  form: {
+  scrollView: {
     flex: 1,
+  },
+  scrollViewContent: {
     padding: 16,
+    paddingBottom: 32,
   },
   section: {
     backgroundColor: '#fff',

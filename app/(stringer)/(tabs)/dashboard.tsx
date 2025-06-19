@@ -101,7 +101,7 @@ export default function DashboardScreen() {
           <Text style={styles.welcomeText}>Welcome back,</Text>
           <Text style={styles.userName}>{shopName || user?.user_metadata?.name || 'Stringer'}</Text>
         </View>
-        <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
           <SkeletonCard count={3} />
         </ScrollView>
       </SafeAreaView>
@@ -110,20 +110,26 @@ export default function DashboardScreen() {
 
   if (error) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>{error}</Text>
-      </View>
+      <SafeAreaView style={styles.container} edges={['top','left','right']}>
+        <View style={styles.header}>
+          <Text style={styles.welcomeText}>Welcome back,</Text>
+          <Text style={styles.userName}>{shopName || user?.user_metadata?.name || 'Stringer'}</Text>
+        </View>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.container} edges={['top','left','right']}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text style={styles.welcomeText}>Welcome back,</Text>
-          <Text style={styles.userName}>{shopName || user?.user_metadata?.name || 'Stringer'}</Text>
-        </View>
-
+      <View style={styles.header}>
+        <Text style={styles.welcomeText}>Welcome back,</Text>
+        <Text style={styles.userName}>{shopName || user?.user_metadata?.name || 'Stringer'}</Text>
+      </View>
+      
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Stats Section */}
         <DashboardStats 
           jobsCount={stats.jobsCount}
@@ -216,12 +222,15 @@ const styles = StyleSheet.create({
   },
   welcomeText: {
     fontSize: 16,
-    color: COLORS.white,
+    color: COLORS.gray,
   },
   userName: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: COLORS.white,
+    color: COLORS.gray,
     marginTop: 4,
+  },
+  scrollView: {
+    flex: 1,
   },
 }); 

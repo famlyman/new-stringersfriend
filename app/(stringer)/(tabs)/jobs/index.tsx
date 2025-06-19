@@ -4,16 +4,25 @@ import { useState, useEffect } from 'react';
 import { 
   FlatList, 
   StyleSheet, 
-  Text, 
   TouchableOpacity, 
   View, 
   ActivityIndicator, 
-  RefreshControl 
+  RefreshControl,
+  ScrollView
 } from 'react-native';
 import { useAuth } from '../../../../src/contexts/AuthContext';
 import { supabase } from '../../../../src/lib/supabase';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { JobStatus, statusConfig, Job as JobBase } from '../../../../src/types/job';
+import { 
+  UI_KIT, 
+  Text, 
+  Button, 
+  Card, 
+  Badge, 
+  SkeletonLoader,
+  DashboardCard
+} from '../../../../src/components';
 
 interface JobWithClient extends Omit<JobBase, 'client'> {
   client: {
@@ -27,6 +36,65 @@ interface JobWithClient extends Omit<JobBase, 'client'> {
 const getStatusDisplay = (jobStatus: JobStatus): { text: string; color: string } => {
   const config = statusConfig[jobStatus] || statusConfig.pending;
   return { text: config.label, color: config.color };
+};
+
+const getStatusVariant = (jobStatus: JobStatus): 'primary' | 'success' | 'warning' | 'error' | 'neutral' => {
+  switch (jobStatus) {
+    case 'completed':
+      return 'success';
+    case 'in_progress':
+      return 'primary';
+    case 'pending':
+      return 'warning';
+    case 'picked_up':
+      return 'neutral';
+    default:
+      return 'neutral';
+  }
+};
+
+const MINI_CARD_STYLE = {
+  backgroundColor: UI_KIT.colors.white,
+  borderRadius: UI_KIT.borderRadius.lg,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 0.06,
+  shadowRadius: 2,
+  elevation: 1,
+  marginBottom: UI_KIT.spacing.md,
+  padding: UI_KIT.spacing.md,
+  flexDirection: 'row' as const,
+  alignItems: 'center' as const,
+  justifyContent: 'space-between' as const,
+};
+
+const renderJobMiniCard = (item: JobWithClient) => {
+  const statusConfig = getStatusDisplay(item.job_status);
+  const statusVariant = getStatusVariant(item.job_status);
+  return (
+    <Link href={`/(stringer)/(tabs)/jobs/${item.id}`} asChild key={item.id}>
+      <TouchableOpacity activeOpacity={0.7} style={MINI_CARD_STYLE}>
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text variant="h5" style={styles.jobCardTitle}>{item.title}</Text>
+            <Ionicons name="chevron-forward" size={20} color={UI_KIT.colors.gray} />
+          </View>
+          {item.client && (
+            <Text variant="body" color={UI_KIT.colors.gray} style={styles.jobCardSubtitle}>
+              {item.client.full_name}
+            </Text>
+          )}
+          <View style={styles.jobCardDetails}>
+            <Text variant="caption" color={UI_KIT.colors.gray}>
+              {new Date(item.created_at).toLocaleDateString()}
+              {item.racket_count > 0 && ` • ${item.racket_count} ${item.racket_count === 1 ? 'racket' : 'racquets'}`}
+            </Text>
+            <Badge variant={statusVariant} label={statusConfig.text} />
+          </View>
+        </View>
+      </TouchableOpacity>
+    </Link>
+  );
 };
 
 export default function JobsScreen() {
@@ -79,94 +147,92 @@ export default function JobsScreen() {
     }
   }, [user?.id]);
 
-  const renderItem = ({ item }: { item: JobWithClient }) => {
-    const status = getStatusDisplay(item.job_status);
-    
-    return (
-      <Link href={`/(stringer)/(tabs)/jobs/${item.id}`} asChild>
-        <TouchableOpacity style={styles.jobCard}>
-          <View style={styles.jobCardContent}>
-            <Text style={styles.jobCardTitle}>{item.title}</Text>
-            {item.client && <Text style={styles.jobCardSubtitle}>{item.client.full_name}</Text>}
-            <View style={styles.jobCardDetails}>
-              <Text style={styles.jobCardDetailText}>
-                {new Date(item.created_at).toLocaleDateString()}
-                {item.racket_count > 0 && ` • ${item.racket_count} ${item.racket_count === 1 ? 'racket' : 'racquets'}`}
-              </Text>
-              <View style={[styles.jobCardStatusContainer, { backgroundColor: status.color }]}>
-                <Text style={styles.jobCardStatusText}>{status.text}</Text>
-              </View>
-            </View>
-          </View>
-          <Ionicons name="chevron-forward" size={24} color="#999" />
-        </TouchableOpacity>
-      </Link>
-    );
-  };
-
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
+      <SafeAreaView style={styles.container} edges={['top','left','right']}>
+        <View style={styles.header}>
+          <Text variant="h2" color={UI_KIT.colors.gray}>Jobs</Text>
+          <View style={styles.addButtonPlaceholder} />
+        </View>
+        
+        <View style={styles.loadingContainer}>
+          <SkeletonLoader width="100%" height={100} style={styles.skeletonItem} />
+          <SkeletonLoader width="100%" height={100} style={styles.skeletonItem} />
+          <SkeletonLoader width="100%" height={100} style={styles.skeletonItem} />
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity 
-          style={styles.retryButton}
-          onPress={fetchJobs}
-        >
-          <Text style={styles.retryButtonText}>Retry</Text>
-        </TouchableOpacity>
-      </View>
+      <SafeAreaView style={styles.container} edges={['top','left','right']}>
+        <View style={styles.header}>
+          <Text variant="h2" color={UI_KIT.colors.gray}>Jobs</Text>
+          <View style={styles.addButtonPlaceholder} />
+        </View>
+        
+        <View style={styles.errorContainer}>
+          <Text variant="body" color={UI_KIT.colors.red} style={styles.errorText}>
+            {error}
+          </Text>
+          <Button 
+            title="Retry" 
+            onPress={fetchJobs}
+            variant="primary"
+            style={{ marginTop: UI_KIT.spacing.md }}
+          />
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.container} edges={['top','left','right']}>
       <View style={styles.header}>
-        <Text style={styles.title}>Jobs</Text>
+        <Text variant="h2" color={UI_KIT.colors.gray}>Jobs</Text>
         <Link href="/(stringer)/(tabs)/jobs/new" asChild>
           <TouchableOpacity style={styles.addButton}>
-            <Ionicons name="add" size={24} color="white" />
+            <Ionicons name="add" size={24} color={UI_KIT.colors.white} />
           </TouchableOpacity>
         </Link>
       </View>
-      
-      {jobs.length > 0 ? (
-        <FlatList
-          data={jobs}
-          renderItem={renderItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={[
-            styles.listContent,
-            { paddingBottom: insets.bottom + 20 }
-          ]}
-          refreshControl={
-            <RefreshControl
-              refreshing={loading}
-              onRefresh={fetchJobs}
-              colors={['#007AFF']}
-              tintColor="#007AFF"
-            />
-          }
-        />
-      ) : (
-        <View style={[styles.emptyState, { paddingBottom: insets.bottom + 20 }]}>
-          <Ionicons name="list-outline" size={64} color="#ccc" />
-          <Text style={styles.emptyStateText}>No jobs yet</Text>
-          <Text style={styles.emptyStateSubtext}>Create your first job to get started</Text>
-          <Link href="/(stringer)/(tabs)/jobs/new" asChild>
-            <TouchableOpacity style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>Create Job</Text>
-            </TouchableOpacity>
-          </Link>
-        </View>
-      )}
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.listContent}>
+        <DashboardCard
+          title="All Jobs"
+          icon="briefcase-outline"
+          style={{ marginHorizontal: 0, marginBottom: 0 }}
+        >
+          {jobs.length > 0 ? (
+            jobs.map(renderJobMiniCard)
+          ) : (
+            <View style={[styles.emptyState, { paddingBottom: insets.bottom + UI_KIT.spacing.md }]}> 
+              <Ionicons 
+                name="list-outline" 
+                size={64} 
+                color={UI_KIT.colors.lightGray} 
+              />
+              <Text variant="h4" style={styles.emptyStateText}>
+                No jobs yet
+              </Text>
+              <Text variant="body" color={UI_KIT.colors.gray} style={styles.emptyStateSubtext}>
+                Create your first job to get started
+              </Text>
+              <Link href="/(stringer)/(tabs)/jobs/new" asChild>
+                <TouchableOpacity>
+                  <Button 
+                    title="Create Job" 
+                    variant="primary"
+                    icon="add"
+                    onPress={() => {}}
+                    style={{ marginTop: UI_KIT.spacing.lg }}
+                  />
+                </TouchableOpacity>
+              </Link>
+            </View>
+          )}
+        </DashboardCard>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -174,142 +240,87 @@ export default function JobsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
-  },
-  errorText: {
-    color: '#ff3b30',
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 20,
+    backgroundColor: UI_KIT.colors.background,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#fff',
+    padding: UI_KIT.spacing.md,
+    backgroundColor: UI_KIT.colors.navy,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  listContent: {
-    padding: 16,
-  },
-  jobCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  jobCardContent: {
-    flex: 1,
-  },
-  jobCardTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
-  },
-  jobCardSubtitle: {
-    fontSize: 15,
-    color: '#666',
-    marginBottom: 8,
-  },
-  jobCardDetails: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  jobCardDetailText: {
-    fontSize: 14,
-    color: '#888',
-  },
-  jobCardStatusContainer: {
-    borderRadius: 20,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    marginLeft: 10,
-    minWidth: 70,
-    alignItems: 'center',
-  },
-  jobCardStatusText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 12,
+    borderBottomColor: UI_KIT.colors.primary,
+    paddingBottom: 30,
   },
   addButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: UI_KIT.colors.primary,
     width: 36,
     height: 36,
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  addButtonPlaceholder: {
+    width: 36,
+    height: 36,
+  },
+  listContent: {
+    paddingTop: UI_KIT.spacing.md,
+    paddingBottom: UI_KIT.spacing.md,
+  },
+  jobCard: {
+    marginBottom: UI_KIT.spacing.md,
+  },
+  jobCardContent: {
+    flex: 1,
+  },
+  jobCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  jobCardTitle: {
+    marginBottom: UI_KIT.spacing.xs,
+  },
+  jobCardSubtitle: {
+    marginBottom: UI_KIT.spacing.sm,
+  },
+  jobCardDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: UI_KIT.spacing.sm,
+  },
+  loadingContainer: {
+    paddingTop: UI_KIT.spacing.md,
+    paddingBottom: UI_KIT.spacing.md,
+  },
+  skeletonItem: {
+    marginBottom: UI_KIT.spacing.md,
+    marginHorizontal: UI_KIT.spacing.md,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: UI_KIT.spacing.lg,
+  },
+  errorText: {
+    textAlign: 'center',
+    marginBottom: UI_KIT.spacing.md,
+  },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: UI_KIT.spacing.lg,
   },
   emptyStateText: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: UI_KIT.spacing.md,
+    marginBottom: UI_KIT.spacing.sm,
   },
   emptyStateSubtext: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 24,
+    marginBottom: UI_KIT.spacing.lg,
     textAlign: 'center',
-  },
-  primaryButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  primaryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  retryButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });
