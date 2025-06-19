@@ -19,6 +19,7 @@ import { Card } from '../../../src/components/ui/Card';
 import { Text as UI_KIT_Text } from '../../../src/components/ui/Text';
 import { Button } from '../../../src/components/ui/Button';
 import { UI_KIT } from '../../../src/styles/uiKit';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type FormData = {
   brand: string;
@@ -152,25 +153,28 @@ export default function NewInventoryScreen() {
   };
 
   return (
-    <ScrollView style={{ backgroundColor: UI_KIT.colors.background }}>
-      <Stack.Screen options={{ headerShown: false }} />
-      <View style={{ padding: UI_KIT.spacing.md }}>
-        <View style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          marginBottom: UI_KIT.spacing.lg,
-        }}>
-          <TouchableOpacity onPress={() => router.replace('/(stringer)/(tabs)/inventory')}>
-            <Ionicons name="arrow-back" size={24} color={UI_KIT.colors.primary} />
-          </TouchableOpacity>
-          <UI_KIT_Text variant="h2" style={{ marginLeft: UI_KIT.spacing.md }}>
-            Add New String
-          </UI_KIT_Text>
-        </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: UI_KIT.colors.background }} edges={['top','left','right']}>
+      <View style={{
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: UI_KIT.spacing.md,
+        paddingTop: UI_KIT.spacing.md,
+        paddingBottom: UI_KIT.spacing.sm,
+        backgroundColor: UI_KIT.colors.navy,
+        borderBottomWidth: 1,
+        borderBottomColor: UI_KIT.colors.primary,
+      }}>
+        <TouchableOpacity onPress={() => router.replace('/(stringer)/(tabs)/inventory')} style={{ position: 'absolute', left: UI_KIT.spacing.md }}>
+          <Ionicons name="arrow-back" size={24} color={UI_KIT.colors.gray} />
+        </TouchableOpacity>
+        <UI_KIT_Text variant="h2" style={{ color: UI_KIT.colors.gray, fontWeight: 'bold', flex: 1, textAlign: 'center' }}>
+          Add New String
+        </UI_KIT_Text>
+        <View style={{ width: 36, marginLeft: 8 }} />
+      </View>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: UI_KIT.spacing.md }}>
         <Card variant="elevated">
-          <UI_KIT_Text variant="h2" style={{ marginBottom: UI_KIT.spacing.md }}>
-            Add New String
-          </UI_KIT_Text>
           <View style={{ marginBottom: UI_KIT.spacing.md }}>
             <UI_KIT_Text variant="label" style={{ marginBottom: UI_KIT.spacing.xs }}>Brand</UI_KIT_Text>
             <SearchableDropdown
@@ -269,8 +273,8 @@ export default function NewInventoryScreen() {
             style={{ marginTop: UI_KIT.spacing.md }}
           />
         </Card>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
