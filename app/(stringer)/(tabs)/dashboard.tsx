@@ -87,7 +87,7 @@ export default function DashboardScreen() {
   };
 
   const handleClientPress = (clientId: string) => {
-    router.push(`/(stringer)/clients/${clientId}`);
+    router.push(`/(stringer)/(tabs)/clients/${clientId}`);
   };
 
   const handleInventoryPress = (itemId: string) => {
@@ -158,7 +158,7 @@ export default function DashboardScreen() {
         <DashboardCard
           title="Recent Clients"
           icon="people-outline"
-          onViewAll={() => router.push('/(stringer)/clients')}
+          onViewAll={() => router.push('/(stringer)/(tabs)/clients')}
           emptyMessage="No clients yet"
           emptyIcon="people-outline"
         >

@@ -4,6 +4,7 @@ import { useAuth } from '../../../src/contexts/AuthContext';
 import { View, StyleSheet, Platform, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../../../src/constants/colors';
+import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 
 export default function StringerTabsLayout() {
   const { session } = useAuth();
@@ -18,7 +19,7 @@ export default function StringerTabsLayout() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <ExpoStatusBar style="dark" />
       <Tabs
         screenOptions={{
           tabBarActiveTintColor: COLORS.white,
@@ -75,16 +76,6 @@ export default function StringerTabsLayout() {
           }}
         />
         <Tabs.Screen
-          name="clients"
-          options={{
-            title: 'Clients',
-            tabBarIcon: ({ color }) => (
-              <FontAwesome name="users" size={24} color={color} />
-            ),
-            headerShown: false,
-          }}
-        />
-        <Tabs.Screen
           name="settings"
           options={{
             title: 'Settings',
@@ -103,6 +94,13 @@ export default function StringerTabsLayout() {
         />
         <Tabs.Screen
           name="inventory/[id]/edit"
+          options={{
+            href: null,
+            headerShown: false,
+          }}
+        />
+        <Tabs.Screen
+          name="inventory/new"
           options={{
             href: null,
             headerShown: false,
@@ -129,10 +127,32 @@ export default function StringerTabsLayout() {
             headerShown: false,
           }}
         />
+        <Tabs.Screen
+          name="clients/new"
+          options={{
+            href: null,
+            headerShown: false,
+          }}
+        />
+        <Tabs.Screen
+          name="clients/[id]/index"
+          options={{
+            href: null,
+            headerShown: false,
+          }}
+        />
       </Tabs>
     </View>
   );
 }
+
+// Keep the tab bar visible for nested routes (like clients/[id])
+export const unstable_settings = {
+  initialRouteName: 'dashboard',
+  // This tells expo-router to keep the tab bar visible for all nested routes
+  // See: https://docs.expo.dev/router/advanced/tab-bar-visibility/
+  tabBarVisible: true,
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -156,4 +176,4 @@ const styles = StyleSheet.create({
   itemStyle: {
     paddingVertical: 4,
   },
-}); 
+});

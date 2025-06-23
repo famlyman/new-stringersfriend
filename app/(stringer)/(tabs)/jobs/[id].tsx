@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, Platform, StatusBar } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { JobStatus, statusConfig } from '../../../../src/types/job';
 import { supabase } from '../../../../src/lib/supabase';
@@ -230,11 +230,6 @@ export default function JobDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar 
-        barStyle="dark-content" 
-        backgroundColor="white"
-        translucent={false}
-      />
       <Stack.Screen 
         options={{
           headerShown: false,
@@ -309,7 +304,7 @@ export default function JobDetailScreen() {
               style={styles.infoCard}
               onPress={() => {
                 if (job.client && job.client.length > 0) {
-                  router.push(`/(stringer)/clients/${job.client[0].id}`);
+                  router.push(`/(stringer)/(tabs)/clients/${job.client[0].id}`);
                 }
               }}
             >

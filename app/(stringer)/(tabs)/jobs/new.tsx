@@ -7,6 +7,13 @@ import { supabase } from '../../../../src/lib/supabase';
 import SearchableDropdown from '../../../components/SearchableDropdown';
 import CustomAlert from '../../../components/CustomAlert'; // Import CustomAlert
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Card } from '../../../../src/components/ui/Card';
+import { Text as UIText } from '../../../../src/components/ui/Text';
+import { Button } from '../../../../src/components/ui/Button';
+import { UI_KIT } from '../../../../src/styles/uiKit';
+import CustomHeader from '../../../../src/components/CustomHeader';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // --- UPDATED TYPES ---
 
@@ -884,13 +891,31 @@ export default function NewJobScreen() {
     );
   };
 
+  const insets = useSafeAreaInsets();
+
   return (
-    <View style={styles.container}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollViewContent}>
-        <View style={styles.section}>
-          {/* Client Selection */}
-          <View style={styles.sectionTitleContainer}>
-            <Text style={styles.sectionTitle}>Select Client</Text>
+    <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: UI_KIT.colors.background }}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <CustomHeader
+        title="New Job"
+        onBack={() => router.back()}
+        titleStyle={{ textAlignVertical: 'center' }}
+      />
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: UI_KIT.spacing.xl * 2 + insets.bottom, padding: UI_KIT.spacing.md }}
+      >
+        <Card variant="base" style={{ marginBottom: UI_KIT.spacing.lg }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: UI_KIT.spacing.md }}>
+            <UIText variant="h3">Select Client</UIText>
+            <Button
+              title="Add Client"
+              variant="outline"
+              icon="add"
+              size="small"
+              onPress={() => router.push('/(stringer)/(tabs)/clients/new')}
+              style={{ marginLeft: UI_KIT.spacing.sm }}
+            />
           </View>
           <SearchableDropdown
             label="Select Client"
@@ -904,71 +929,67 @@ export default function NewJobScreen() {
             searchFields={['label']}
             placeholder="Search clients..."
           />
+        </Card>
 
-          {/* Racquet Selection */}
-          {selectedClientId && (
-            <>
-              <View style={styles.sectionTitleContainer}>
-                <Text style={styles.sectionTitle}>Select Racquet</Text>
-              </View>
-              <View style={styles.racquetList}>
-                {clientRacquets.map(racquet => (
-                  <TouchableOpacity
-                    key={racquet.id}
-                    style={[
-                      styles.racquetItem,
-                      selectedRacquetId === racquet.id && styles.racquetItemSelected
-                    ]}
-                    onPress={() => handleRacquetSelect(racquet)}
-                  >
-                    <Text style={styles.racquetItemText}>
-                      {racquet.brand} {racquet.model}
-                    </Text>
-                    {racquet.head_size && (
-                      <Text style={styles.racquetItemDetail}>
-                        Head Size: {racquet.head_size} sq in
-                      </Text>
-                    )}
-                    {racquet.weight_grams && (
-                      <Text style={styles.racquetItemDetail}>
-                        Weight: {racquet.weight_grams}g
-                      </Text>
-                    )}
-                    {racquet.string_pattern && (
-                      <Text style={styles.racquetItemDetail}>
-                        Pattern: {racquet.string_pattern}
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </>
-          )}
+        {/* Show client details if a client is selected */}
+        {selectedClientId && (
+          <Card variant="base" style={{ marginBottom: UI_KIT.spacing.lg }}>
+            <UIText variant="h4" style={{ marginBottom: UI_KIT.spacing.sm }}>Client Details</UIText>
+            <UIText variant="body" style={{ marginBottom: UI_KIT.spacing.xs }}>
+              {clients.find(c => c.id === selectedClientId)?.full_name}
+            </UIText>
+            {clients.find(c => c.id === selectedClientId)?.notes && (
+              <UIText variant="caption" color={UI_KIT.colors.gray}>
+                {clients.find(c => c.id === selectedClientId)?.notes}
+              </UIText>
+            )}
+          </Card>
+        )}
 
-          {/* Racquet Details */}
-          {renderRacquetDetails()}
+        {/* Show racquet selection if a client is selected */}
+        {selectedClientId && (
+          <Card variant="base" style={{ marginBottom: UI_KIT.spacing.lg }}>
+            <UIText variant="h4" style={{ marginBottom: UI_KIT.spacing.sm }}>Select Racquet</UIText>
+            {clientRacquets.length === 0 ? (
+              <UIText variant="body" color={UI_KIT.colors.gray}>No racquets found for this client.</UIText>
+            ) : (
+              clientRacquets.map(racquet => (
+                <TouchableOpacity
+                  key={racquet.id}
+                  style={[
+                    styles.racquetItem,
+                    racquet.id === selectedRacquetId && styles.racquetItemSelected,
+                  ]}
+                  onPress={() => handleRacquetSelect(racquet)}
+                  activeOpacity={0.7}
+                >
+                  <UIText variant="body" style={styles.racquetItemText}>
+                    {racquet.brand} {racquet.model}
+                  </UIText>
+                  <UIText variant="caption" color={UI_KIT.colors.gray} style={styles.racquetItemDetail}>
+                    Head: {racquet.head_size || 'N/A'} | Weight: {racquet.weight_grams || 'N/A'}g
+                  </UIText>
+                </TouchableOpacity>
+              ))
+            )}
+          </Card>
+        )}
 
-          {/* Submit Button */}
-          <TouchableOpacity
-            style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
-            onPress={handleSubmit}
-            disabled={isLoading}
-          >
-            <Text style={styles.submitButtonText}>
-              {isLoading ? 'Creating...' : 'Create Job'}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {/* Show racquet details if a racquet is selected */}
+        {selectedRacquetId && renderRacquetDetails()}
+
+        {/* Place the Create Job button at the bottom, outside the ScrollView content */}
       </ScrollView>
-
-      {/* Custom Alert */}
-      <CustomAlert
-        visible={alertVisible}
-        title={alertTitle}
-        message={alertMessage}
-        onClose={hideAlert}
+      <Button
+        title={isLoading ? 'Creating...' : 'Create Job'}
+        onPress={handleSubmit}
+        variant="primary"
+        loading={isLoading}
+        style={{ margin: UI_KIT.spacing.md, marginBottom: UI_KIT.spacing.xl + insets.bottom }}
+        icon="checkmark"
+        disabled={isLoading}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 

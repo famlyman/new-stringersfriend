@@ -1,8 +1,14 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../../src/lib/supabase';
+import { Card } from '../../../../src/components/ui/Card';
+import { UI_KIT } from '../../../../src/styles/uiKit';
+import CustomHeader from '../../../../src/components/CustomHeader';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Text as UIText } from '../../../../src/components/ui/Text';
+import { Button } from '../../../../src/components/ui/Button';
 
 interface RacquetDetail {
   id: string;
@@ -85,115 +91,97 @@ export default function RacquetDetailScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
+      <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: UI_KIT.colors.background }}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <CustomHeader
+          title="Racquet Details"
+          onBack={() => router.back()}
+          titleStyle={{ textAlignVertical: 'center' }}
+        />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={UI_KIT.colors.primary} />
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (!racquet) {
     return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>Racquet not found</Text>
-      </View>
+      <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: UI_KIT.colors.background }}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <CustomHeader
+          title="Racquet Details"
+          onBack={() => router.back()}
+          titleStyle={{ textAlignVertical: 'center' }}
+        />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <UIText variant="body">Racquet not found</UIText>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <Stack.Screen 
-        options={{
-          title: 'Racquet Details',
-          headerShown: true,
-          headerLeft: () => (
-            <TouchableOpacity 
-              style={styles.headerButton}
-              onPress={() => router.replace('/(stringer)/(tabs)/jobs')}
-            >
-              <Ionicons name="arrow-back" size={24} color="#007AFF" />
-            </TouchableOpacity>
-          ),
-          headerRight: () => (
-            <TouchableOpacity 
-              style={styles.headerButton}
-              onPress={() => router.push(`/(stringer)/racquets/${id}/edit`)}
-            >
-              <Ionicons name="create-outline" size={24} color="#007AFF" />
-            </TouchableOpacity>
-          ),
-        }}
+    <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: UI_KIT.colors.background }}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <CustomHeader
+        title="Racquet Details"
+        onBack={() => router.back()}
+        titleStyle={{ textAlignVertical: 'center' }}
+        rightContent={
+          <TouchableOpacity onPress={() => router.push(`/(stringer)/racquets/${id}/edit`)}>
+            <Ionicons name="create-outline" size={24} color={UI_KIT.colors.primary} />
+          </TouchableOpacity>
+        }
       />
-      
-      <ScrollView style={styles.scrollContent}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Racquet Information</Text>
-          <View style={styles.infoCard}>
-            <View style={styles.infoIcon}>
-              <Ionicons name="tennisball-outline" size={20} color="#1976D2" />
-            </View>
-            <View style={styles.infoContent}>
-              <Text style={styles.infoTitle}>{racquet.brand?.name || 'N/A'} {racquet.model?.name || 'N/A'}</Text>
-              <Text style={styles.infoSubtitle}></Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Specifications</Text>
-          <View style={styles.detailsGrid}>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Head Size</Text>
-              <Text style={styles.detailValue}>{racquet.head_size || 'N/A'} sq. in.</Text>
-            </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>String Pattern</Text>
-              <Text style={styles.detailValue}>{racquet.string_pattern || 'N/A'}</Text>
-            </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Weight</Text>
-              <Text style={styles.detailValue}>{racquet.weight_grams || 'N/A'} g</Text>
-            </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Balance Point</Text>
-              <Text style={styles.detailValue}>{racquet.balance_point || 'N/A'}</Text>
-            </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Stiffness Rating</Text>
-              <Text style={styles.detailValue}>{racquet.stiffness_rating || 'N/A'}</Text>
-            </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Length</Text>
-              <Text style={styles.detailValue}>{racquet.length_cm || 'N/A'} cm</Text>
-            </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Last Stringing Date</Text>
-              <Text style={styles.detailValue}>
-                {racquet.last_stringing_date ? new Date(racquet.last_stringing_date).toLocaleDateString() : 'N/A'}
-              </Text>
-            </View>
-          </View>
-        </View>
-
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: UI_KIT.spacing.xl }}>
+        <Card style={{ margin: UI_KIT.spacing.md, borderRadius: 12, backgroundColor: UI_KIT.colors.white, padding: UI_KIT.spacing.md, marginTop: UI_KIT.spacing.lg, marginBottom: UI_KIT.spacing.md }}>
+          <UIText variant="h3" style={{ marginBottom: UI_KIT.spacing.sm }}>
+            {racquet.brand?.name || 'N/A'} {racquet.model?.name || 'N/A'}
+          </UIText>
+          <UIText variant="body" style={{ marginBottom: UI_KIT.spacing.xs, fontSize: 15 }}>
+            Head Size: {racquet.head_size || 'N/A'} sq. in.
+          </UIText>
+          <UIText variant="body" style={{ marginBottom: UI_KIT.spacing.xs, fontSize: 15 }}>
+            String Pattern: {racquet.string_pattern || 'N/A'}
+          </UIText>
+          <UIText variant="body" style={{ marginBottom: UI_KIT.spacing.xs, fontSize: 15 }}>
+            Weight: {racquet.weight_grams || 'N/A'} g
+          </UIText>
+          <UIText variant="body" style={{ marginBottom: UI_KIT.spacing.xs, fontSize: 15 }}>
+            Balance Point: {racquet.balance_point || 'N/A'}
+          </UIText>
+          <UIText variant="body" style={{ marginBottom: UI_KIT.spacing.xs, fontSize: 15 }}>
+            Stiffness Rating: {racquet.stiffness_rating || 'N/A'}
+          </UIText>
+          <UIText variant="body" style={{ marginBottom: UI_KIT.spacing.xs, fontSize: 15 }}>
+            Length: {racquet.length_cm || 'N/A'} cm
+          </UIText>
+          <UIText variant="body" style={{ marginBottom: UI_KIT.spacing.xs, fontSize: 15 }}>
+            Last Stringing Date: {racquet.last_stringing_date ? new Date(racquet.last_stringing_date).toLocaleDateString() : 'N/A'}
+          </UIText>
+        </Card>
         {racquet.stringing_notes && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Stringing Notes</Text>
-            <View style={styles.notesCard}>
-              <Text style={styles.notesText}>{racquet.stringing_notes}</Text>
-            </View>
-          </View>
+          <Card style={{ margin: UI_KIT.spacing.md, backgroundColor: UI_KIT.colors.white, padding: UI_KIT.spacing.md, borderRadius: 12 }}>
+            <UIText variant="h4" style={{ marginBottom: UI_KIT.spacing.sm }}>Stringing Notes</UIText>
+            <UIText variant="body" style={{ fontSize: 15 }}>{racquet.stringing_notes}</UIText>
+          </Card>
         )}
-
         {racquet.notes && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Notes</Text>
-            <View style={styles.notesCard}>
-              <Text style={styles.notesText}>{racquet.notes}</Text>
-            </View>
-          </View>
+          <Card style={{ margin: UI_KIT.spacing.md, backgroundColor: UI_KIT.colors.white, padding: UI_KIT.spacing.md, borderRadius: 12 }}>
+            <UIText variant="h4" style={{ marginBottom: UI_KIT.spacing.sm }}>Notes</UIText>
+            <UIText variant="body" style={{ fontSize: 15 }}>{racquet.notes}</UIText>
+          </Card>
         )}
-
+        <Button
+          title="Edit Racquet"
+          variant="primary"
+          icon="create-outline"
+          style={{ margin: UI_KIT.spacing.md, marginTop: UI_KIT.spacing.xl }}
+          onPress={() => router.push(`/(stringer)/racquets/${id}/edit`)}
+        />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 

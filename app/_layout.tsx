@@ -3,7 +3,7 @@
 import '../src/config/polyfills';
 
 import { Stack, useRouter, useSegments, SplashScreen } from 'expo-router'; // Added useRouter, useSegments, SplashScreen
-import { View, Text, ActivityIndicator, StyleSheet, StatusBar, Platform, SafeAreaView } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, Platform, SafeAreaView } from 'react-native';
 import { useState, useEffect } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../src/lib/supabase';
@@ -11,6 +11,7 @@ import AuthProvider, { useAuth } from '../src/contexts/AuthContext'; // Added us
 import { clearDevSession } from '../src/utils/dev';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
+import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -135,27 +136,29 @@ export default function RootLayout() {
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider initialSession={initialSession}>
-        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-        <View style={{ flex: 1, backgroundColor: '#fff' }}>
-          <AuthRedirector />
-          <Stack screenOptions={{ 
-            headerShown: false,
-            contentStyle: { 
-              flex: 1,
-              backgroundColor: '#fff',
-            },
-            animation: 'fade',
-          }}>
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="(stringer)" />
-            <Stack.Screen name="(customer)" />
-          </Stack>
-        </View>
-      </AuthProvider>
-    </QueryClientProvider>
+    <>
+      <ExpoStatusBar style="dark" />
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider initialSession={initialSession}>
+          <View style={{ flex: 1, backgroundColor: '#fff' }}>
+            <AuthRedirector />
+            <Stack screenOptions={{ 
+              headerShown: false,
+              contentStyle: { 
+                flex: 1,
+                backgroundColor: '#fff',
+              },
+              animation: 'fade',
+            }}>
+              <Stack.Screen name="(auth)" />
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="(stringer)" />
+              <Stack.Screen name="(customer)" />
+            </Stack>
+          </View>
+        </AuthProvider>
+      </QueryClientProvider>
+    </>
   );
 }
 
@@ -163,13 +166,13 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#fff',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+    paddingTop: Platform.OS === 'android' ? 0 : 0,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#fff',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+    paddingTop: Platform.OS === 'android' ? 0 : 0,
   },
 });

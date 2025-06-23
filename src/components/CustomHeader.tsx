@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Menu } from 'react-native-paper';
 import { UI_KIT } from '../styles/uiKit';
@@ -17,7 +17,6 @@ interface CustomHeaderProps {
   deleteJob?: () => void;
   children?: React.ReactNode;
   titleStyle?: any;
-  grayNav?: boolean;
 }
 
 const CustomHeader: React.FC<CustomHeaderProps> = ({
@@ -32,28 +31,28 @@ const CustomHeader: React.FC<CustomHeaderProps> = ({
   router,
   deleteJob,
   children,
-  grayNav = false,
   titleStyle,
 }) => {
-  const headerBg = grayNav ? UI_KIT.colors.gray : UI_KIT.colors.navy;
-  const titleColor = grayNav ? UI_KIT.colors.navy : UI_KIT.colors.white;
-  const iconColor = grayNav ? UI_KIT.colors.navy : UI_KIT.colors.primary;
+  // Always use navy for header, gray for title and icons
+  const headerBg = UI_KIT.colors.navy;
+  const titleColor = UI_KIT.colors.gray;
+  const iconColor = UI_KIT.colors.gray;
   return (
     <View style={[styles.container, { backgroundColor: headerBg }] }>
-      <StatusBar 
-        barStyle={grayNav ? 'dark-content' : 'light-content'}
-        backgroundColor={headerBg}
-        translucent={false}
-      />
-      <View style={[styles.header, { backgroundColor: headerBg, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 }] }>
-        {leftContent ? leftContent : onBack ? (
-          <TouchableOpacity onPress={onBack} style={{ padding: 8 }}>
-            <Ionicons name="arrow-back" size={24} color={iconColor} />
+      <View style={styles.headerContainer}>
+        {onBack && (
+          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={28} color={UI_KIT.colors.gray} />
           </TouchableOpacity>
-        ) : (
-          <View style={{ width: 32 }} />
         )}
-        <Text style={[styles.title, { color: titleColor }, titleStyle]} numberOfLines={1} ellipsizeMode="tail">
+        <Text
+          style={[
+            styles.title,
+            titleStyle,
+          ]}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
           {title}
         </Text>
         {rightContent ? rightContent : onMenu ? (
@@ -92,29 +91,33 @@ const CustomHeader: React.FC<CustomHeaderProps> = ({
   );
 };
 
-const styles = {
+const styles = StyleSheet.create({
   container: {
     backgroundColor: UI_KIT.colors.navy,
   },
-  header: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'space-between' as const,
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: UI_KIT.colors.navy,
-    paddingTop: 0,
+    paddingTop: Platform.OS === 'ios' ? 56 : 32,
+    paddingBottom: 16,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginTop: 0,
+    borderBottomWidth: 0,
+    minHeight: 64,
+  },
+  backButton: {
+    marginRight: 12,
+    padding: 8,
   },
   title: {
-    color: UI_KIT.colors.white,
-    fontWeight: '600' as const,
-    fontSize: 18,
     flex: 1,
-    textAlign: 'center' as const,
-    marginLeft: 0,
-  } as const,
-};
+    textAlign: 'center',
+    color: UI_KIT.colors.gray,
+    fontSize: 28,
+    fontWeight: 'bold',
+    textAlignVertical: 'center',
+  },
+});
 
 export { CustomHeader };
 export default CustomHeader;

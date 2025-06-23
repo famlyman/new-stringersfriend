@@ -3,6 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { Text, View, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../../src/lib/supabase';
+import { Card } from '../../../../src/components/ui/Card';
+import { Text as UI_Text } from '../../../../src/components/ui/Text';
+import { Button } from '../../../../src/components/ui/Button';
+import { UI_KIT } from '../../../../src/styles/uiKit';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import CustomHeader from '../../../../src/components/CustomHeader';
 
 interface RacquetDetail {
   id: string;
@@ -149,147 +155,146 @@ export default function EditRacquetScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
+      <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: UI_KIT.colors.background }}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <CustomHeader
+          title="Edit Racquet"
+          onBack={() => router.back()}
+          titleStyle={{ textAlignVertical: 'center' }}
+        />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={UI_KIT.colors.primary} />
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <Stack.Screen 
-        options={{
-          title: `Edit Racquet ${id ? `(${id.substring(0, 4)}...)` : ''}`,
-          headerShown: true,
-          headerLeft: () => (
-            <TouchableOpacity 
-              style={styles.headerButton}
-              onPress={() => router.back()}
-            >
-              <Ionicons name="arrow-back" size={24} color="#007AFF" />
-            </TouchableOpacity>
-          ),
-          headerRight: () => (
-            <TouchableOpacity 
-              style={styles.headerButton}
-              onPress={handleSave}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#007AFF" />
-              ) : (
-                <Ionicons name="save-outline" size={24} color="#007AFF" />
-              )}
-            </TouchableOpacity>
-          ),
-        }}
+    <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: UI_KIT.colors.background }}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <CustomHeader
+        title="Edit Racquet"
+        onBack={() => router.back()}
+        titleStyle={{ textAlignVertical: 'center' }}
       />
-      
-      <ScrollView style={styles.scrollContent}>
-        <Text style={styles.sectionTitle}>Racquet Information</Text>
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Brand Name</Text>
-          <TextInput
-            style={styles.input}
-            value={brandName}
-            onChangeText={setBrandName}
-            placeholder="e.g., Wilson"
-          />
-        </View>
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Model Name</Text>
-          <TextInput
-            style={styles.input}
-            value={modelName}
-            onChangeText={setModelName}
-            placeholder="e.g., Blade 98"
-          />
-        </View>
-
-        <Text style={styles.sectionTitle}>Specifications</Text>
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Head Size (sq. in.)</Text>
-          <TextInput
-            style={styles.input}
-            value={headSize}
-            onChangeText={setHeadSize}
-            keyboardType="numeric"
-            placeholder="e.g., 98"
-          />
-        </View>
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>String Pattern</Text>
-          <TextInput
-            style={styles.input}
-            value={stringPattern}
-            onChangeText={setStringPattern}
-            placeholder="e.g., 16x19"
-          />
-        </View>
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Weight (grams)</Text>
-          <TextInput
-            style={styles.input}
-            value={weightGrams}
-            onChangeText={setWeightGrams}
-            keyboardType="numeric"
-            placeholder="e.g., 304"
-          />
-        </View>
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Balance Point</Text>
-          <TextInput
-            style={styles.input}
-            value={balancePoint}
-            onChangeText={setBalancePoint}
-            placeholder="e.g., 6 pts HL"
-          />
-        </View>
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Stiffness Rating</Text>
-          <TextInput
-            style={styles.input}
-            value={stiffnessRating}
-            onChangeText={setStiffnessRating}
-            placeholder="e.g., 65 RA"
-          />
-        </View>
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Length (cm)</Text>
-          <TextInput
-            style={styles.input}
-            value={lengthCm}
-            onChangeText={setLengthCm}
-            keyboardType="numeric"
-            placeholder="e.g., 68.5"
-          />
-        </View>
-
-        <Text style={styles.sectionTitle}>Notes</Text>
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>General Notes</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            value={notes}
-            onChangeText={setNotes}
-            placeholder="Any general notes about the racquet..."
-            multiline
-            numberOfLines={4}
-          />
-        </View>
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Stringing Notes</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            value={stringingNotes}
-            onChangeText={setStringingNotes}
-            placeholder="Specific stringing instructions..."
-            multiline
-            numberOfLines={4}
-          />
-        </View>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: UI_KIT.spacing.xl, padding: UI_KIT.spacing.md }}>
+        <Card variant="base" style={{ marginBottom: UI_KIT.spacing.lg }}>
+          <UI_Text variant="h3" style={{ marginBottom: UI_KIT.spacing.md }}>Racquet Information</UI_Text>
+          <View style={{ marginBottom: UI_KIT.spacing.md }}>
+            <UI_Text variant="label" style={{ marginBottom: UI_KIT.spacing.xs }}>Brand Name</UI_Text>
+            <TextInput
+              style={UI_KIT.input.base}
+              value={brandName}
+              onChangeText={setBrandName}
+              placeholder="e.g., Wilson"
+            />
+          </View>
+          <View style={{ marginBottom: UI_KIT.spacing.md }}>
+            <UI_Text variant="label" style={{ marginBottom: UI_KIT.spacing.xs }}>Model Name</UI_Text>
+            <TextInput
+              style={UI_KIT.input.base}
+              value={modelName}
+              onChangeText={setModelName}
+              placeholder="e.g., Blade 98"
+            />
+          </View>
+        </Card>
+        <Card variant="base" style={{ marginBottom: UI_KIT.spacing.lg }}>
+          <UI_Text variant="h4" style={{ marginBottom: UI_KIT.spacing.md }}>Specifications</UI_Text>
+          <View style={{ marginBottom: UI_KIT.spacing.md }}>
+            <UI_Text variant="label" style={{ marginBottom: UI_KIT.spacing.xs }}>Head Size (sq. in.)</UI_Text>
+            <TextInput
+              style={UI_KIT.input.base}
+              value={headSize}
+              onChangeText={setHeadSize}
+              keyboardType="numeric"
+              placeholder="e.g., 98"
+            />
+          </View>
+          <View style={{ marginBottom: UI_KIT.spacing.md }}>
+            <UI_Text variant="label" style={{ marginBottom: UI_KIT.spacing.xs }}>String Pattern</UI_Text>
+            <TextInput
+              style={UI_KIT.input.base}
+              value={stringPattern}
+              onChangeText={setStringPattern}
+              placeholder="e.g., 16x19"
+            />
+          </View>
+          <View style={{ marginBottom: UI_KIT.spacing.md }}>
+            <UI_Text variant="label" style={{ marginBottom: UI_KIT.spacing.xs }}>Weight (grams)</UI_Text>
+            <TextInput
+              style={UI_KIT.input.base}
+              value={weightGrams}
+              onChangeText={setWeightGrams}
+              keyboardType="numeric"
+              placeholder="e.g., 304"
+            />
+          </View>
+          <View style={{ marginBottom: UI_KIT.spacing.md }}>
+            <UI_Text variant="label" style={{ marginBottom: UI_KIT.spacing.xs }}>Balance Point</UI_Text>
+            <TextInput
+              style={UI_KIT.input.base}
+              value={balancePoint}
+              onChangeText={setBalancePoint}
+              placeholder="e.g., 6 pts HL"
+            />
+          </View>
+          <View style={{ marginBottom: UI_KIT.spacing.md }}>
+            <UI_Text variant="label" style={{ marginBottom: UI_KIT.spacing.xs }}>Stiffness Rating</UI_Text>
+            <TextInput
+              style={UI_KIT.input.base}
+              value={stiffnessRating}
+              onChangeText={setStiffnessRating}
+              placeholder="e.g., 65 RA"
+            />
+          </View>
+          <View style={{ marginBottom: UI_KIT.spacing.md }}>
+            <UI_Text variant="label" style={{ marginBottom: UI_KIT.spacing.xs }}>Length (cm)</UI_Text>
+            <TextInput
+              style={UI_KIT.input.base}
+              value={lengthCm}
+              onChangeText={setLengthCm}
+              keyboardType="numeric"
+              placeholder="e.g., 68.5"
+            />
+          </View>
+        </Card>
+        <Card variant="base" style={{ marginBottom: UI_KIT.spacing.lg }}>
+          <UI_Text variant="h4" style={{ marginBottom: UI_KIT.spacing.md }}>Notes</UI_Text>
+          <View style={{ marginBottom: UI_KIT.spacing.md }}>
+            <UI_Text variant="label" style={{ marginBottom: UI_KIT.spacing.xs }}>General Notes</UI_Text>
+            <TextInput
+              style={[UI_KIT.input.base, { minHeight: 100, textAlignVertical: 'top' }]}
+              value={notes}
+              onChangeText={setNotes}
+              placeholder="Any general notes about the racquet..."
+              multiline
+              numberOfLines={4}
+            />
+          </View>
+          <View style={{ marginBottom: UI_KIT.spacing.md }}>
+            <UI_Text variant="label" style={{ marginBottom: UI_KIT.spacing.xs }}>Stringing Notes</UI_Text>
+            <TextInput
+              style={[UI_KIT.input.base, { minHeight: 100, textAlignVertical: 'top' }]}
+              value={stringingNotes}
+              onChangeText={setStringingNotes}
+              placeholder="Specific stringing instructions..."
+              multiline
+              numberOfLines={4}
+            />
+          </View>
+        </Card>
+        <Button
+          title={loading ? 'Saving...' : 'Save Racquet'}
+          onPress={handleSave}
+          variant="primary"
+          loading={loading}
+          style={{ marginTop: UI_KIT.spacing.lg, marginBottom: UI_KIT.spacing.xl }}
+          icon="save-outline"
+          disabled={loading}
+        />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
