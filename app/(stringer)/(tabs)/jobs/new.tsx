@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, ScrollView, TouchableOpacity, Text, TextInput, Platform } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Text, TextInput, Platform, Alert, ActivityIndicator } from 'react-native';
 import { useAuth } from '../../../../src/contexts/AuthContext';
 import { supabase } from '../../../../src/lib/supabase';
 import SearchableDropdown from '../../../components/SearchableDropdown';
@@ -14,6 +14,8 @@ import { Button } from '../../../../src/components/ui/Button';
 import { UI_KIT } from '../../../../src/styles/uiKit';
 import CustomHeader from '../../../../src/components/CustomHeader';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ClientForm from '../../../../src/components/ClientForm';
+import RacquetForm from '../../../../src/components/RacquetForm';
 
 // --- UPDATED TYPES ---
 
@@ -892,98 +894,58 @@ export default function NewJobScreen() {
   };
 
   const insets = useSafeAreaInsets();
+  const [segment, setSegment] = useState<'addClient' | 'addRacquet'>('addClient');
+  const [newClientId, setNewClientId] = useState<string | null>(null);
+  const [newRacquetId, setNewRacquetId] = useState<string | null>(null);
 
   return (
     <View style={styles.container}>
       <CustomHeader title="New Job" onBack={() => router.back()} />
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
-      >
-        <Card variant="base" style={{ marginBottom: UI_KIT.spacing.lg }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: UI_KIT.spacing.md }}>
-            <UIText variant="h3">Select Client</UIText>
-            <Button
-              title="Add Client"
-              variant="outline"
-              icon="add"
-              size="small"
-              onPress={() => router.push('/(stringer)/(tabs)/clients/new')}
-              style={{ marginLeft: UI_KIT.spacing.sm }}
+      {/* Segmented Control */}
+      <View style={{ flexDirection: 'row', justifyContent: 'center', marginVertical: UI_KIT.spacing.md }}>
+        <Button
+          title="Add Client"
+          variant={segment === 'addClient' ? 'primary' : 'outline'}
+          onPress={() => setSegment('addClient')}
+          style={{ marginRight: UI_KIT.spacing.sm }}
+        />
+        <Button
+          title="Add Racquet"
+          variant={segment === 'addRacquet' ? 'primary' : 'outline'}
+          onPress={() => setSegment('addRacquet')}
+        />
+      </View>
+      {/* Segment Content */}
+      {segment === 'addClient' && (
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: UI_KIT.spacing.xl }}>
+          <Card variant="base" style={{ margin: UI_KIT.spacing.md }}>
+            <UIText variant="h4" style={{ marginBottom: UI_KIT.spacing.md }}>Add Client</UIText>
+            <ClientForm
+              onClientCreated={(clientId) => {
+                setNewClientId(clientId);
+                // Do NOT switch to Add Racquet after creation
+                // Optionally show a success message or reset form
+              }}
             />
-          </View>
-          <SearchableDropdown
-            label="Select Client"
-            items={clients.map(client => ({
-              id: client.id,
-              label: client.full_name,
-              value: client.id,
-            }))}
-            value={selectedClientId}
-            onChange={handleClientSelect}
-            searchFields={['label']}
-            placeholder="Search clients..."
-          />
-        </Card>
-
-        {/* Show client details if a client is selected */}
-        {selectedClientId && (
-          <Card variant="base" style={{ marginBottom: UI_KIT.spacing.lg }}>
-            <UIText variant="h4" style={{ marginBottom: UI_KIT.spacing.sm }}>Client Details</UIText>
-            <UIText variant="body" style={{ marginBottom: UI_KIT.spacing.xs }}>
-              {clients.find(c => c.id === selectedClientId)?.full_name}
-            </UIText>
-            {clients.find(c => c.id === selectedClientId)?.notes && (
-              <UIText variant="caption" color={UI_KIT.colors.gray}>
-                {clients.find(c => c.id === selectedClientId)?.notes}
-              </UIText>
-            )}
           </Card>
-        )}
-
-        {/* Show racquet selection if a client is selected */}
-        {selectedClientId && (
-          <Card variant="base" style={{ marginBottom: UI_KIT.spacing.lg }}>
-            <UIText variant="h4" style={{ marginBottom: UI_KIT.spacing.sm }}>Select Racquet</UIText>
-            {clientRacquets.length === 0 ? (
-              <UIText variant="body" color={UI_KIT.colors.gray}>No racquets found for this client.</UIText>
-            ) : (
-              clientRacquets.map(racquet => (
-                <TouchableOpacity
-                  key={racquet.id}
-                  style={[
-                    styles.racquetItem,
-                    racquet.id === selectedRacquetId && styles.racquetItemSelected,
-                  ]}
-                  onPress={() => handleRacquetSelect(racquet)}
-                  activeOpacity={0.7}
-                >
-                  <UIText variant="body" style={styles.racquetItemText}>
-                    {racquet.brand} {racquet.model}
-                  </UIText>
-                  <UIText variant="caption" color={UI_KIT.colors.gray} style={styles.racquetItemDetail}>
-                    Head: {racquet.head_size || 'N/A'} | Weight: {racquet.weight_grams || 'N/A'}g
-                  </UIText>
-                </TouchableOpacity>
-              ))
-            )}
+        </ScrollView>
+      )}
+      {segment === 'addRacquet' && (
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: UI_KIT.spacing.xl }}>
+          <Card variant="base" style={{ margin: UI_KIT.spacing.md, flex: 1 }}>
+            <UIText variant="h4" style={{ marginBottom: UI_KIT.spacing.md }}>Add Racquet</UIText>
+            <RacquetForm
+              preselectedClientId={newClientId || undefined}
+              onRacquetCreated={(racquetId, clientId) => {
+                setNewRacquetId(racquetId);
+                setNewClientId(clientId);
+                // Optionally, you can auto-select the racquet/client in the main job form here
+              }}
+            />
           </Card>
-        )}
-
-        {/* Show racquet details if a racquet is selected */}
-        {selectedRacquetId && renderRacquetDetails()}
-
-        {/* Place the Create Job button at the bottom, outside the ScrollView content */}
-      </ScrollView>
-      <Button
-        title={isLoading ? 'Creating...' : 'Create Job'}
-        onPress={handleSubmit}
-        variant="primary"
-        loading={isLoading}
-        style={{ margin: UI_KIT.spacing.md, marginBottom: UI_KIT.spacing.xl + insets.bottom }}
-        icon="checkmark"
-        disabled={isLoading}
-      />
+        </ScrollView>
+      )}
+      
     </View>
   );
 }
@@ -1121,5 +1083,9 @@ const styles = StyleSheet.create({
   datePickerButtonText: {
     fontSize: 16,
     color: '#333',
+  },
+  notesInput: {
+    height: 100,
+    textAlignVertical: 'top',
   },
 });
