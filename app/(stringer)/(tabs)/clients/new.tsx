@@ -18,11 +18,12 @@ import { Text } from '../../../../src/components/ui/Text';
 import { Button } from '../../../../src/components/ui/Button';
 import CustomHeader from '../../../../src/components/CustomHeader';
 import { UI_KIT } from '../../../../src/styles/uiKit';
-import { SafeAreaView as SafeAreaViewRN } from 'react-native-safe-area-context';
+import { SafeAreaView as SafeAreaViewRN, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function NewClientScreen() {
   const router = useRouter();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const [isLoading, setIsLoading] = useState(false);
   const [isStringsLoading, setIsStringsLoading] = useState(true);
   const [stringBrands, setStringBrands] = useState<Array<{ id: string; label: string }>>([]);
@@ -303,276 +304,271 @@ export default function NewClientScreen() {
   const stringBrandItems = stringBrands.map(brand => ({ id: brand.id, label: brand.label }));
 
   return (
-    <>
-      <Stack.Screen 
-        options={{ headerShown: false }}
+    <View style={{ flex: 1, backgroundColor: UI_KIT.colors.background }}>
+      <CustomHeader
+        title="Add New Client"
+        onBack={() => router.back()}
+        rightContent={
+          <Button
+            title={isLoading ? 'Saving...' : 'Save'}
+            onPress={handleSubmit}
+            variant="text"
+            loading={isLoading}
+            disabled={isLoading || !formData.full_name.trim()}
+            textStyle={{ color: UI_KIT.colors.white }}
+          />
+        }
       />
-      <SafeAreaViewRN style={{ flex: 1, backgroundColor: UI_KIT.colors.background }} edges={['top', 'left', 'right']}>
-        <CustomHeader
-          title="Add New Client"
-          onBack={() => router.back()}
-          titleStyle={{ textAlignVertical: 'center' }}
-        />
-        {isStringsLoading ? (
-          <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color={UI_KIT.colors.primary} />
-            <Text variant="body" style={styles.loadingText}>Loading string options...</Text>
-          </View>
-        ) : (
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{ paddingBottom: UI_KIT.spacing.xl * 3, padding: UI_KIT.spacing.md }}
-            keyboardShouldPersistTaps="handled"
-          >
-            <Card variant="base" style={{ marginBottom: UI_KIT.spacing.lg }}>
-              <Text variant="h3" style={{ marginBottom: UI_KIT.spacing.md }}>Client Information</Text>
-              <View style={styles.formGroup}>
-                <Text variant="label">Full Name *</Text>
-                <TextInput
-                  style={UI_KIT.input.base}
-                  value={formData.full_name}
-                  onChangeText={(value) => handleChange('full_name', value)}
-                  placeholder="John Doe"
-                  autoCapitalize="words"
-                  autoFocus
-                  editable={!isLoading}
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text variant="label">Email</Text>
-                <TextInput
-                  style={UI_KIT.input.base}
-                  value={formData.email}
-                  onChangeText={(value) => handleChange('email', value)}
-                  placeholder="email@example.com"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  editable={!isLoading}
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text variant="label">Phone</Text>
-                <TextInput
-                  style={UI_KIT.input.base}
-                  value={formData.phone}
-                  onChangeText={(value) => handleChange('phone', value)}
-                  placeholder="(555) 123-4567"
-                  keyboardType="phone-pad"
-                  editable={!isLoading}
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text variant="label">Notes</Text>
-                <TextInput
-                  style={[UI_KIT.input.base, { minHeight: 100, textAlignVertical: 'top' }]}
-                  value={formData.notes}
-                  onChangeText={(value) => handleChange('notes', value)}
-                  placeholder="Any additional notes about this client..."
-                  multiline
-                  editable={!isLoading}
-                />
-              </View>
-            </Card>
+      {isStringsLoading ? (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color={UI_KIT.colors.primary} />
+          <Text variant="body" style={styles.loadingText}>Loading string options...</Text>
+        </View>
+      ) : (
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: insets.bottom + UI_KIT.spacing.xl, padding: UI_KIT.spacing.md }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Card variant="base" style={{ marginBottom: UI_KIT.spacing.lg }}>
+            <Text variant="h3" style={{ marginBottom: UI_KIT.spacing.md }}>Client Information</Text>
+            <View style={styles.formGroup}>
+              <Text variant="label">Full Name *</Text>
+              <TextInput
+                style={UI_KIT.input.base}
+                value={formData.full_name}
+                onChangeText={(value) => handleChange('full_name', value)}
+                placeholder="John Doe"
+                autoCapitalize="words"
+                autoFocus
+                editable={!isLoading}
+              />
+            </View>
+            <View style={styles.formGroup}>
+              <Text variant="label">Email</Text>
+              <TextInput
+                style={UI_KIT.input.base}
+                value={formData.email}
+                onChangeText={(value) => handleChange('email', value)}
+                placeholder="email@example.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!isLoading}
+              />
+            </View>
+            <View style={styles.formGroup}>
+              <Text variant="label">Phone</Text>
+              <TextInput
+                style={UI_KIT.input.base}
+                value={formData.phone}
+                onChangeText={(value) => handleChange('phone', value)}
+                placeholder="(555) 123-4567"
+                keyboardType="phone-pad"
+                editable={!isLoading}
+              />
+            </View>
+            <View style={styles.formGroup}>
+              <Text variant="label">Notes</Text>
+              <TextInput
+                style={[UI_KIT.input.base, { minHeight: 100, textAlignVertical: 'top' }]}
+                value={formData.notes}
+                onChangeText={(value) => handleChange('notes', value)}
+                placeholder="Any additional notes about this client..."
+                multiline
+                editable={!isLoading}
+              />
+            </View>
+          </Card>
 
-            <Card variant="base" style={{ marginBottom: UI_KIT.spacing.lg }}>
-              <Text variant="h3" style={{ marginBottom: UI_KIT.spacing.md }}>Stringing Preferences (Optional)</Text>
-              <Text variant="label" style={{ marginTop: 10 }}>Preferred Main String</Text>
-              <View style={styles.formGroup}>
-                <SearchableDropdown
-                  label="Brand"
-                  items={stringBrandItems}
-                  value={selectedMainStringBrandId}
-                  onChange={handleMainStringBrandChange}
-                  searchFields={['label']}
-                  placeholder="Select a brand..."
-                  disabled={isLoading}
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <SearchableDropdown
-                  label="Model"
-                  items={filteredMainStringModels}
-                  value={formData.preferred_main_model_id}
-                  onChange={handleMainStringModelChange}
-                  searchFields={['label']}
-                  placeholder="Select a model..."
-                  disabled={isLoading || !selectedMainStringBrandId}
-                />
-              </View>
-              <Text variant="label" style={{ marginTop: 10 }}>Preferred Cross String</Text>
-              <View style={styles.formGroup}>
-                <SearchableDropdown
-                  label="Brand"
-                  items={stringBrandItems}
-                  value={selectedCrossStringBrandId}
-                  onChange={handleCrossStringBrandChange}
-                  searchFields={['label']}
-                  placeholder="Select a brand..."
-                  disabled={isLoading}
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <SearchableDropdown
-                  label="Model"
-                  items={filteredCrossStringModels}
-                  value={formData.preferred_cross_model_id}
-                  onChange={handleCrossStringModelChange}
-                  searchFields={['label']}
-                  placeholder="Select a model..."
-                  disabled={isLoading || !selectedCrossStringBrandId}
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text variant="label">Default Main Tension</Text>
-                <TextInput
-                  style={UI_KIT.input.base}
-                  value={formData.default_tension_main}
-                  onChangeText={(value) => handleChange('default_tension_main', value)}
-                  placeholder="e.g., 52"
-                  keyboardType="numeric"
-                  editable={!isLoading}
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text variant="label">Default Cross Tension</Text>
-                <TextInput
-                  style={UI_KIT.input.base}
-                  value={formData.default_tension_cross}
-                  onChangeText={(value) => handleChange('default_tension_cross', value)}
-                  placeholder="e.g., 50"
-                  keyboardType="numeric"
-                  editable={!isLoading}
-                />
-              </View>
-            </Card>
+          <Card variant="base" style={{ marginBottom: UI_KIT.spacing.lg }}>
+            <Text variant="h3" style={{ marginBottom: UI_KIT.spacing.md }}>Stringing Preferences (Optional)</Text>
+            <Text variant="label" style={{ marginTop: 10 }}>Preferred Main String</Text>
+            <View style={styles.formGroup}>
+              <SearchableDropdown
+                label="Brand"
+                items={stringBrandItems}
+                value={selectedMainStringBrandId}
+                onChange={handleMainStringBrandChange}
+                searchFields={['label']}
+                placeholder="Select a brand..."
+                disabled={isLoading}
+              />
+            </View>
+            <View style={styles.formGroup}>
+              <SearchableDropdown
+                label="Model"
+                items={filteredMainStringModels}
+                value={formData.preferred_main_model_id}
+                onChange={handleMainStringModelChange}
+                searchFields={['label']}
+                placeholder="Select a model..."
+                disabled={isLoading || !selectedMainStringBrandId}
+              />
+            </View>
+            <Text variant="label" style={{ marginTop: 10 }}>Preferred Cross String</Text>
+            <View style={styles.formGroup}>
+              <SearchableDropdown
+                label="Brand"
+                items={stringBrandItems}
+                value={selectedCrossStringBrandId}
+                onChange={handleCrossStringBrandChange}
+                searchFields={['label']}
+                placeholder="Select a brand..."
+                disabled={isLoading}
+              />
+            </View>
+            <View style={styles.formGroup}>
+              <SearchableDropdown
+                label="Model"
+                items={filteredCrossStringModels}
+                value={formData.preferred_cross_model_id}
+                onChange={handleCrossStringModelChange}
+                searchFields={['label']}
+                placeholder="Select a model..."
+                disabled={isLoading || !selectedCrossStringBrandId}
+              />
+            </View>
+            <View style={styles.formGroup}>
+              <Text variant="label">Default Main Tension</Text>
+              <TextInput
+                style={UI_KIT.input.base}
+                value={formData.default_tension_main}
+                onChangeText={(value) => handleChange('default_tension_main', value)}
+                placeholder="e.g., 52"
+                keyboardType="numeric"
+                editable={!isLoading}
+              />
+            </View>
+            <View style={styles.formGroup}>
+              <Text variant="label">Default Cross Tension</Text>
+              <TextInput
+                style={UI_KIT.input.base}
+                value={formData.default_tension_cross}
+                onChangeText={(value) => handleChange('default_tension_cross', value)}
+                placeholder="e.g., 50"
+                keyboardType="numeric"
+                editable={!isLoading}
+              />
+            </View>
+          </Card>
 
-            <Card variant="base" style={{ marginBottom: UI_KIT.spacing.lg }}>
-              <Text variant="h3" style={{ marginBottom: UI_KIT.spacing.md }}>Racquet Information (Optional)</Text>
-              <View style={styles.formGroup}>
-                <Text variant="label">Brand</Text>
-                <SearchableDropdown
-                  label="Brand"
-                  items={racquetBrands}
-                  value={selectedRacquetBrandId}
-                  onChange={handleRacquetBrandChange}
-                  searchFields={['label']}
-                  placeholder="Select a brand..."
-                  disabled={isLoading}
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text variant="label">Model</Text>
-                <SearchableDropdown
-                  label="Model"
-                  items={filteredRacquetModels}
-                  value={formData.model}
-                  onChange={handleRacquetModelChange}
-                  searchFields={['label']}
-                  placeholder="Select a model..."
-                  disabled={isLoading || !selectedRacquetBrandId}
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text variant="label">Head Size (sq. in.)</Text>
-                <TextInput
-                  style={UI_KIT.input.base}
-                  value={formData.head_size}
-                  onChangeText={(value) => handleChange('head_size', value)}
-                  placeholder="e.g., 100"
-                  keyboardType="numeric"
-                  editable={!isLoading}
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text variant="label">String Pattern</Text>
-                <TextInput
-                  style={UI_KIT.input.base}
-                  value={formData.string_pattern}
-                  onChangeText={(value) => handleChange('string_pattern', value)}
-                  placeholder="e.g., 16x19"
-                  editable={!isLoading}
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text variant="label">Weight (grams)</Text>
-                <TextInput
-                  style={UI_KIT.input.base}
-                  value={formData.weight_grams}
-                  onChangeText={(value) => handleChange('weight_grams', value)}
-                  placeholder="e.g., 300"
-                  keyboardType="numeric"
-                  editable={!isLoading}
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text variant="label">Balance Point</Text>
-                <TextInput
-                  style={UI_KIT.input.base}
-                  value={formData.balance_point}
-                  onChangeText={(value) => handleChange('balance_point', value)}
-                  placeholder="e.g., 32.5 cm"
-                  editable={!isLoading}
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text variant="label">Stiffness Rating</Text>
-                <TextInput
-                  style={UI_KIT.input.base}
-                  value={formData.stiffness_rating}
-                  onChangeText={(value) => handleChange('stiffness_rating', value)}
-                  placeholder="e.g., 65"
-                  keyboardType="numeric"
-                  editable={!isLoading}
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text variant="label">Length (cm)</Text>
-                <TextInput
-                  style={UI_KIT.input.base}
-                  value={formData.length_cm}
-                  onChangeText={(value) => handleChange('length_cm', value)}
-                  placeholder="e.g., 68.5"
-                  keyboardType="numeric"
-                  editable={!isLoading}
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text variant="label">Racquet Notes</Text>
-                <TextInput
-                  style={[UI_KIT.input.base, { minHeight: 100, textAlignVertical: 'top' }]}
-                  value={formData.racquet_notes}
-                  onChangeText={(value) => handleChange('racquet_notes', value)}
-                  placeholder="Any additional notes about this racquet..."
-                  multiline
-                  editable={!isLoading}
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text variant="label">Stringing Notes</Text>
-                <TextInput
-                  style={[UI_KIT.input.base, { minHeight: 100, textAlignVertical: 'top' }]}
-                  value={formData.stringing_notes}
-                  onChangeText={(value) => handleChange('stringing_notes', value)}
-                  placeholder="Any specific stringing notes for this racquet..."
-                  multiline
-                  editable={!isLoading}
-                />
-              </View>
-            </Card>
-            <Button
-              title={isLoading ? 'Saving...' : 'Save'}
-              onPress={handleSubmit}
-              variant="primary"
-              loading={isLoading}
-              style={{ margin: UI_KIT.spacing.md, marginBottom: UI_KIT.spacing.xl }}
-              icon="checkmark"
-              disabled={isLoading || !formData.full_name.trim()}
-            />
-          </ScrollView>
-        )}
-      </SafeAreaViewRN>
-    </>
+          <Card variant="base" style={{ marginBottom: UI_KIT.spacing.lg }}>
+            <Text variant="h3" style={{ marginBottom: UI_KIT.spacing.md }}>Racquet Information (Optional)</Text>
+            <View style={styles.formGroup}>
+              <Text variant="label">Brand</Text>
+              <SearchableDropdown
+                label="Brand"
+                items={racquetBrands}
+                value={selectedRacquetBrandId}
+                onChange={handleRacquetBrandChange}
+                searchFields={['label']}
+                placeholder="Select a brand..."
+                disabled={isLoading}
+              />
+            </View>
+            <View style={styles.formGroup}>
+              <Text variant="label">Model</Text>
+              <SearchableDropdown
+                label="Model"
+                items={filteredRacquetModels}
+                value={formData.model}
+                onChange={handleRacquetModelChange}
+                searchFields={['label']}
+                placeholder="Select a model..."
+                disabled={isLoading || !selectedRacquetBrandId}
+              />
+            </View>
+            <View style={styles.formGroup}>
+              <Text variant="label">Head Size (sq. in.)</Text>
+              <TextInput
+                style={UI_KIT.input.base}
+                value={formData.head_size}
+                onChangeText={(value) => handleChange('head_size', value)}
+                placeholder="e.g., 100"
+                keyboardType="numeric"
+                editable={!isLoading}
+              />
+            </View>
+            <View style={styles.formGroup}>
+              <Text variant="label">String Pattern</Text>
+              <TextInput
+                style={UI_KIT.input.base}
+                value={formData.string_pattern}
+                onChangeText={(value) => handleChange('string_pattern', value)}
+                placeholder="e.g., 16x19"
+                editable={!isLoading}
+              />
+            </View>
+            <View style={styles.formGroup}>
+              <Text variant="label">Weight (grams)</Text>
+              <TextInput
+                style={UI_KIT.input.base}
+                value={formData.weight_grams}
+                onChangeText={(value) => handleChange('weight_grams', value)}
+                placeholder="e.g., 300"
+                keyboardType="numeric"
+                editable={!isLoading}
+              />
+            </View>
+            <View style={styles.formGroup}>
+              <Text variant="label">Balance Point</Text>
+              <TextInput
+                style={UI_KIT.input.base}
+                value={formData.balance_point}
+                onChangeText={(value) => handleChange('balance_point', value)}
+                placeholder="e.g., 32.5 cm"
+                editable={!isLoading}
+              />
+            </View>
+            <View style={styles.formGroup}>
+              <Text variant="label">Stiffness Rating</Text>
+              <TextInput
+                style={UI_KIT.input.base}
+                value={formData.stiffness_rating}
+                onChangeText={(value) => handleChange('stiffness_rating', value)}
+                placeholder="e.g., 65"
+                keyboardType="numeric"
+                editable={!isLoading}
+              />
+            </View>
+            <View style={styles.formGroup}>
+              <Text variant="label">Length (cm)</Text>
+              <TextInput
+                style={UI_KIT.input.base}
+                value={formData.length_cm}
+                onChangeText={(value) => handleChange('length_cm', value)}
+                placeholder="e.g., 68.5"
+                keyboardType="numeric"
+                editable={!isLoading}
+              />
+            </View>
+            <View style={styles.formGroup}>
+              <Text variant="label">Racquet Notes</Text>
+              <TextInput
+                style={[UI_KIT.input.base, { minHeight: 100, textAlignVertical: 'top' }]}
+                value={formData.racquet_notes}
+                onChangeText={(value) => handleChange('racquet_notes', value)}
+                placeholder="Any additional notes about this racquet..."
+                multiline
+                editable={!isLoading}
+              />
+            </View>
+            <View style={styles.formGroup}>
+              <Text variant="label">Stringing Notes</Text>
+              <TextInput
+                style={[UI_KIT.input.base, { minHeight: 100, textAlignVertical: 'top' }]}
+                value={formData.stringing_notes}
+                onChangeText={(value) => handleChange('stringing_notes', value)}
+                placeholder="Any specific stringing notes for this racquet..."
+                multiline
+                editable={!isLoading}
+              />
+            </View>
+          </Card>
+        </ScrollView>
+      )}
+    </View>
   );
 }
 

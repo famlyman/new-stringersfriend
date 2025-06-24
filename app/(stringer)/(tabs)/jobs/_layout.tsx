@@ -69,6 +69,12 @@ export default function JobsLayout() {
           headerTitleAlign: 'center',
         }}
       />
+      <Stack.Screen
+        name="[id]/edit"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

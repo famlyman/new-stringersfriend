@@ -11,7 +11,8 @@ import {
   ActivityIndicator,
   Modal,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  StatusBar
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../../src/contexts/AuthContext';
@@ -22,6 +23,7 @@ import { Text as UI_KIT_Text } from '../../../../src/components/ui/Text';
 import { Button } from '../../../../src/components/ui/Button';
 import { UI_KIT } from '../../../../src/styles/uiKit';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import CustomHeader from '../../../../src/components/CustomHeader';
 
 type FormData = {
   brand: string;
@@ -155,32 +157,27 @@ export default function NewInventoryScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: UI_KIT.colors.background }} edges={['top','left','right']}>
-      <View style={{
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: UI_KIT.spacing.md,
-        paddingTop: UI_KIT.spacing.md,
-        paddingBottom: UI_KIT.spacing.sm,
-        backgroundColor: UI_KIT.colors.navy,
-        borderBottomWidth: 1,
-        borderBottomColor: UI_KIT.colors.primary,
-      }}>
-        <TouchableOpacity onPress={() => router.replace('/(stringer)/(tabs)/inventory')} style={{ position: 'absolute', left: UI_KIT.spacing.md }}>
-          <Ionicons name="arrow-back" size={24} color={UI_KIT.colors.gray} />
-        </TouchableOpacity>
-        <UI_KIT_Text variant="h2" style={{ color: UI_KIT.colors.gray, fontWeight: 'bold', flex: 1, textAlign: 'center' }}>
-          Add New String
-        </UI_KIT_Text>
-        <View style={{ width: 36, marginLeft: 8 }} />
-      </View>
+    <View style={{ flex: 1, backgroundColor: UI_KIT.colors.background }}>
+      <CustomHeader 
+        title="Add New String" 
+        onBack={() => router.replace('/(stringer)/(tabs)/inventory')} 
+      />
+      
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={90}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
       >
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: UI_KIT.spacing.md, paddingBottom: UI_KIT.spacing.xl * 2 }} keyboardShouldPersistTaps="handled">
+        <ScrollView 
+          contentContainerStyle={{ 
+            flexGrow: 1,
+            padding: UI_KIT.spacing.md,
+            paddingBottom: 100
+          }} 
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          style={{ flex: 1 }}
+        >
           <Card variant="elevated">
             <View style={{ marginBottom: UI_KIT.spacing.md }}>
               <UI_KIT_Text variant="label" style={{ marginBottom: UI_KIT.spacing.xs }}>Brand</UI_KIT_Text>
@@ -272,17 +269,18 @@ export default function NewInventoryScreen() {
               </View>
             </View>
           </Card>
-          <Button
-            title={loading ? 'Adding...' : 'Add to Inventory'}
-            onPress={handleSubmit}
-            loading={loading}
-            variant="primary"
-            size="large"
-            style={{ marginTop: UI_KIT.spacing.md }}
-          />
+          <View style={{ height: 80, justifyContent: 'center', marginTop: UI_KIT.spacing.md }}>
+            <Button
+              title={loading ? 'Adding...' : 'Add to Inventory'}
+              onPress={handleSubmit}
+              loading={loading}
+              variant="primary"
+              size="large"
+            />
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 

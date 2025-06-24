@@ -15,18 +15,7 @@ export default function StringerLayout() {
             <View style={styles.container}>
               <Stack
                 screenOptions={{
-                  headerStyle: {
-                    backgroundColor: '#fff',
-                  },
-                  headerTitleStyle: {
-                    fontSize: 17,
-                    fontWeight: '600',
-                    color: '#000',
-                  },
-                  headerBackTitleStyle: {
-                    fontSize: 17,
-                  },
-                  headerTitleAlign: 'center',
+                  headerShown: false,
                   contentStyle: { backgroundColor: '#fff' },
                   animation: 'fade',
                 }}

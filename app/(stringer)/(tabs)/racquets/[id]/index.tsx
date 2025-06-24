@@ -2,13 +2,13 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../../../../src/lib/supabase';
-import { Card } from '../../../../src/components/ui/Card';
-import { UI_KIT } from '../../../../src/styles/uiKit';
-import CustomHeader from '../../../../src/components/CustomHeader';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text as UIText } from '../../../../src/components/ui/Text';
-import { Button } from '../../../../src/components/ui/Button';
+import { supabase } from '../../../../../src/lib/supabase';
+import { Card } from '../../../../../src/components/ui/Card';
+import { UI_KIT } from '../../../../../src/styles/uiKit';
+import CustomHeader from '../../../../../src/components/CustomHeader';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Text as UIText } from '../../../../../src/components/ui/Text';
+import { Button } from '../../../../../src/components/ui/Button';
 
 interface RacquetDetail {
   id: string;
@@ -33,6 +33,7 @@ interface RacquetDetail {
 export default function RacquetDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const insets = useSafeAreaInsets();
   const [racquet, setRacquet] = useState<RacquetDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -91,8 +92,7 @@ export default function RacquetDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: UI_KIT.colors.background }}>
-        <Stack.Screen options={{ headerShown: false }} />
+      <View style={{ flex: 1, backgroundColor: UI_KIT.colors.background }}>
         <CustomHeader
           title="Racquet Details"
           onBack={() => router.back()}
@@ -101,14 +101,13 @@ export default function RacquetDetailScreen() {
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color={UI_KIT.colors.primary} />
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (!racquet) {
     return (
-      <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: UI_KIT.colors.background }}>
-        <Stack.Screen options={{ headerShown: false }} />
+      <View style={{ flex: 1, backgroundColor: UI_KIT.colors.background }}>
         <CustomHeader
           title="Racquet Details"
           onBack={() => router.back()}
@@ -117,24 +116,23 @@ export default function RacquetDetailScreen() {
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <UIText variant="body">Racquet not found</UIText>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: UI_KIT.colors.background }}>
-      <Stack.Screen options={{ headerShown: false }} />
+    <View style={{ flex: 1, backgroundColor: UI_KIT.colors.background }}>
       <CustomHeader
         title="Racquet Details"
         onBack={() => router.back()}
         titleStyle={{ textAlignVertical: 'center' }}
         rightContent={
-          <TouchableOpacity onPress={() => router.push(`/(stringer)/racquets/${id}/edit`)}>
-            <Ionicons name="create-outline" size={24} color={UI_KIT.colors.primary} />
+          <TouchableOpacity onPress={() => router.push(`/(stringer)/(tabs)/racquets/${id}/edit`)}>
+            <Ionicons name="create-outline" size={24} color="#fff" />
           </TouchableOpacity>
         }
       />
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: UI_KIT.spacing.xl }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: insets.bottom + UI_KIT.spacing.xl }}>
         <Card style={{ margin: UI_KIT.spacing.md, borderRadius: 12, backgroundColor: UI_KIT.colors.white, padding: UI_KIT.spacing.md, marginTop: UI_KIT.spacing.lg, marginBottom: UI_KIT.spacing.md }}>
           <UIText variant="h3" style={{ marginBottom: UI_KIT.spacing.sm }}>
             {racquet.brand?.name || 'N/A'} {racquet.model?.name || 'N/A'}
@@ -173,15 +171,8 @@ export default function RacquetDetailScreen() {
             <UIText variant="body" style={{ fontSize: 15 }}>{racquet.notes}</UIText>
           </Card>
         )}
-        <Button
-          title="Edit Racquet"
-          variant="primary"
-          icon="create-outline"
-          style={{ margin: UI_KIT.spacing.md, marginTop: UI_KIT.spacing.xl }}
-          onPress={() => router.push(`/(stringer)/racquets/${id}/edit`)}
-        />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

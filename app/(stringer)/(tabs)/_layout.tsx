@@ -22,6 +22,7 @@ export default function StringerTabsLayout() {
       <ExpoStatusBar style="dark" />
       <Tabs
         screenOptions={{
+          headerShown: false,
           tabBarActiveTintColor: COLORS.white,
           tabBarInactiveTintColor: '#c7cbe6',
           tabBarStyle: [
@@ -78,11 +79,11 @@ export default function StringerTabsLayout() {
         <Tabs.Screen
           name="settings"
           options={{
+            headerShown: false,
             title: 'Settings',
             tabBarIcon: ({ color }) => (
               <FontAwesome name="cog" size={24} color={color} />
             ),
-            headerShown: false,
           }}
         />
         <Tabs.Screen
@@ -136,6 +137,27 @@ export default function StringerTabsLayout() {
         />
         <Tabs.Screen
           name="clients/[id]/index"
+          options={{
+            href: null,
+            headerShown: false,
+          }}
+        />
+        <Tabs.Screen
+          name="racquets/[id]/index"
+          options={{
+            href: null,
+            headerShown: false,
+          }}
+        />
+        <Tabs.Screen
+          name="racquets/[id]/edit"
+          options={{
+            href: null,
+            headerShown: false,
+          }}
+        />
+        <Tabs.Screen
+          name="racquets/new"
           options={{
             href: null,
             headerShown: false,

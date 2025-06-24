@@ -1,12 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, Alert, View, TouchableOpacity, ScrollView } from 'react-native';
 import { Job, JobFormData } from '../../../../../src/types/job';
 import JobForm from '../../../../components/JobForm';
 import { supabase } from '../../../../../src/lib/supabase';
 import { Racquet as RacquetType } from '../../../../../src/types/racquet';
 import { StringItem as ImportedStringItem } from '../../../../../src/types/string';
+import CustomHeader from '../../../../../src/components/CustomHeader';
+import { Text, Button, Card, UI_KIT, SPACING } from '../../../../../src/components';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Client {
   id: string;
@@ -37,6 +40,7 @@ export default function EditJobScreen() {
   const [models, setModels] = useState<StringModelForForm[]>([]);
   const [stringBrands, setStringBrands] = useState<StringBrandForForm[]>([]);
   const [stringModels, setStringModels] = useState<StringModelForForm[]>([]);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     fetchData();
@@ -142,17 +146,18 @@ export default function EditJobScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: UI_KIT.colors.background }}>
+        <ActivityIndicator size="large" color={UI_KIT.colors.primary} />
+        <Text variant="body" style={{ marginTop: SPACING.md }}>Loading...</Text>
       </View>
     );
   }
 
   if (!job) {
     return (
-      <View style={styles.emptyContainer}>
-        <Ionicons name="alert-circle-outline" size={48} color="#999" />
-        <Text style={styles.emptyText}>Job not found</Text>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: SPACING.xl, backgroundColor: UI_KIT.colors.background }}>
+        <Ionicons name="alert-circle-outline" size={48} color={UI_KIT.colors.gray} />
+        <Text variant="body" style={{ color: UI_KIT.colors.gray, marginTop: SPACING.md }}>Job not found</Text>
       </View>
     );
   }
@@ -171,96 +176,53 @@ export default function EditJobScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Stack.Screen 
-        options={{
-          title: 'Edit Job',
-          headerShown: true, 
-          headerLeft: () => (
-            <TouchableOpacity 
-              onPress={() => router.back()}
-              style={styles.backButton}
-            >
-              <Ionicons
-                name="arrow-back"
-                size={24}
-                color="#007AFF"
-              />
-            </TouchableOpacity>
-          ),
-          headerRight: () => (
-            <TouchableOpacity onPress={() => handleSubmit(initialFormData)} disabled={isSubmitting}>
-              {isSubmitting ? (
-                <ActivityIndicator color="#007AFF" />
-              ) : (
-                <Ionicons name="save-outline" size={24} color="#007AFF" style={styles.saveButton} />
-              )}
-            </TouchableOpacity>
-          ),
-        }} 
+    <SafeAreaView style={{ flex: 1, backgroundColor: UI_KIT.colors.background }} edges={['bottom', 'left', 'right']}>
+      <CustomHeader
+        title="Edit Job"
+        onBack={() => router.back()}
+        rightContent={
+          <Button
+            title={isSubmitting ? 'Saving...' : 'Save'}
+            variant="primary"
+            size="small"
+            onPress={() => handleSubmit(initialFormData)}
+            disabled={isSubmitting}
+            loading={isSubmitting}
+            icon={isSubmitting ? undefined : 'save-outline'}
+            style={{ minWidth: 100 }}
+          />
+        }
       />
-      
-      <JobForm
-        initialData={initialFormData}
-        onSubmit={handleSubmit}
-        isLoading={isSubmitting}
-        submitButtonText="Save Changes"
-        clients={clients}
-        racquets={racquets}
-        strings={strings}
-        brands={brands?.map(b => ({ id: b.id, name: b.name })) || []}
-        models={models?.map(m => ({ id: m.id, name: m.name, brand_id: m.brand_id })) || []}
-        stringBrands={stringBrands?.map(sb => ({ string_id: sb.id, string_brand: sb.name })) || []}
-        stringModels={stringModels?.map(sm => ({ model_id: sm.id, model: sm.name, brand_id: sm.brand_id })) || []}
-        onAddClient={() => {
-          // Implement navigation to add client screen or a modal
-          Alert.alert('Functionality Not Implemented', 'Add Client not yet implemented.');
-        }}
-        onAddRacquet={() => {
-          Alert.alert('Functionality Not Implemented', 'Add Racquet not yet implemented.');
-        }}
-        onAddString={() => {
-          Alert.alert('Functionality Not Implemented', 'Add String not yet implemented.');
-        }}
-      />
-    </View>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: SPACING.lg, paddingBottom: insets.bottom + SPACING.xl }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Card variant="base">
+          <JobForm
+            initialData={initialFormData}
+            onSubmit={handleSubmit}
+            isLoading={isSubmitting}
+            submitButtonText="Save Changes"
+            clients={clients}
+            racquets={racquets}
+            strings={strings}
+            brands={brands?.map(b => ({ id: b.id, name: b.name })) || []}
+            models={models?.map(m => ({ id: m.id, name: m.name, brand_id: m.brand_id })) || []}
+            stringBrands={stringBrands?.map(sb => ({ string_id: sb.id, string_brand: sb.name })) || []}
+            stringModels={stringModels?.map(sm => ({ model_id: sm.id, model: sm.name, brand_id: sm.brand_id })) || []}
+            onAddClient={() => {
+              Alert.alert('Functionality Not Implemented', 'Add Client not yet implemented.');
+            }}
+            onAddRacquet={() => {
+              Alert.alert('Functionality Not Implemented', 'Add Racquet not yet implemented.');
+            }}
+            onAddString={() => {
+              Alert.alert('Functionality Not Implemented', 'Add String not yet implemented.');
+            }}
+          />
+        </Card>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    backgroundColor: '#fff',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-    backgroundColor: '#f8f9fa',
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#666',
-    marginTop: 16,
-  },
-  backButton: {
-    marginLeft: 16,
-  },
-  saveButton: {
-    marginRight: 16,
-  },
-});

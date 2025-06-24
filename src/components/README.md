@@ -121,6 +121,40 @@ import { InventoryItem } from '@/components/dashboard/DashboardItems';
 />
 ```
 
+## 📱 App-Specific Components
+
+### CustomHeader
+
+Provides a consistent, app-wide header. It is designed to render a white status bar with dark content, followed by a navy blue header bar. This component should be used at the top of every screen that requires a header.
+
+#### Props
+
+| Prop | Type | Required | Description |
+|------|------|----------|-------------|
+| `title` | `string` | ✅ | The title displayed in the header. |
+| `onBack` | `() => void`| ❌ | Callback for the back button. If provided, the back button is shown. |
+| `rightContent`| `React.ReactNode`| ❌ | Custom React node to render on the right side of the header. |
+| `children` | `React.ReactNode`| ❌ | Renders on the right side, can be used as an alternative to `rightContent`. |
+| `onMenu` | `() => void`| ❌ | Renders a default ellipsis icon to trigger a menu. |
+| `menuVisible`| `boolean`| ❌ | Controls the visibility of the menu. |
+| `closeMenu` | `() => void`| ❌ | Callback to close the menu. |
+
+
+#### Example
+
+```tsx
+import CustomHeader from '@/components/CustomHeader';
+
+// In your screen component
+<View style={{ flex: 1 }}>
+  <CustomHeader
+    title="My Screen"
+    onBack={() => navigation.goBack()}
+  />
+  {/* Rest of the screen content */}
+</View>
+```
+
 ## 🎨 UI Components
 
 ### SkeletonLoader

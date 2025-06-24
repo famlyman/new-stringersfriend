@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, Platform, StatusBar } from 'react-native';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { JobStatus, statusConfig } from '../../../../src/types/job';
 import { supabase } from '../../../../src/lib/supabase';
@@ -229,58 +229,53 @@ export default function JobDetailScreen() {
     : null;
 
   return (
-    <View style={styles.container}>
-      <Stack.Screen 
-        options={{
-          headerShown: false,
-        }} 
-      />
-      <CustomHeader
-        title="Job Details"
-        onBack={handleBack}
-        onMenu={openMenu}
-        menuVisible={menuVisible}
-        closeMenu={closeMenu}
-        job={job}
-        router={router}
-        deleteJob={deleteJob}
-        leftContent={
-          <TouchableOpacity onPress={handleBack} style={{ padding: 8 }}>
-            <Ionicons name="arrow-back" size={24} color={UI_KIT.colors.gray} />
-          </TouchableOpacity>
-        }
-        rightContent={
-          <Menu
-            visible={!!menuVisible}
-            onDismiss={closeMenu}
-            anchor={
-              <TouchableOpacity onPress={openMenu} style={{ padding: 8 }}>
-                <Ionicons name="ellipsis-vertical" size={20} color={UI_KIT.colors.gray} />
-              </TouchableOpacity>
-            }
-          >
-            <Menu.Item
-              onPress={() => {
-                closeMenu && closeMenu();
-                if (job?.id && router) {
-                  router.push(`/(stringer)/(tabs)/jobs/${job.id}/edit`);
-                }
-              }}
-              title="Edit Job"
-            />
-            <Menu.Item
-              onPress={() => {
-                closeMenu && closeMenu();
-                if (job && deleteJob) deleteJob();
-              }}
-              title="Delete Job"
-            />
-          </Menu>
-        }
-        titleStyle={{ color: UI_KIT.colors.gray, fontSize: 28, fontWeight: 'bold' }}
-      />
-      
-      <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
+    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+      <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
+        <CustomHeader
+          title="Job Details"
+          onBack={handleBack}
+          onMenu={openMenu}
+          menuVisible={menuVisible}
+          closeMenu={closeMenu}
+          job={job}
+          router={router}
+          deleteJob={deleteJob}
+          leftContent={
+            <TouchableOpacity onPress={handleBack} style={{ padding: 8 }}>
+              <Ionicons name="arrow-back" size={24} color={UI_KIT.colors.gray} />
+            </TouchableOpacity>
+          }
+          rightContent={
+            <Menu
+              visible={!!menuVisible}
+              onDismiss={closeMenu}
+              anchor={
+                <TouchableOpacity onPress={openMenu} style={{ padding: 8 }}>
+                  <Ionicons name="ellipsis-vertical" size={20} color={UI_KIT.colors.gray} />
+                </TouchableOpacity>
+              }
+            >
+              <Menu.Item
+                onPress={() => {
+                  closeMenu && closeMenu();
+                  if (job?.id && router) {
+                    router.push(`/(stringer)/(tabs)/jobs/${job.id}/edit`);
+                  }
+                }}
+                title="Edit Job"
+              />
+              <Menu.Item
+                onPress={() => {
+                  closeMenu && closeMenu();
+                  if (job && deleteJob) deleteJob();
+                }}
+                title="Delete Job"
+              />
+            </Menu>
+          }
+          titleStyle={{ color: UI_KIT.colors.gray, fontSize: 28, fontWeight: 'bold' }}
+        />
+        
         <View style={styles.contentContainer}>
           <ScrollView 
             style={styles.scrollView} 

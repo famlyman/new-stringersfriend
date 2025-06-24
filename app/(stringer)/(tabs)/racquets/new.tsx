@@ -2,9 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
-import { useAuth } from '../../../src/contexts/AuthContext';
-import { supabase } from '../../../src/lib/supabase';
-import SearchableDropdown from '../../components/SearchableDropdown';
+import { useAuth } from '../../../../src/contexts/AuthContext';
+import { supabase } from '../../../../src/lib/supabase';
+import SearchableDropdown from '../../../components/SearchableDropdown';
+import CustomHeader from '../../../../src/components/CustomHeader';
 
 type Client = {
   id: string;
@@ -164,21 +165,7 @@ export default function NewRacquetScreen() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen 
-        options={{
-          title: 'Add New Racquet',
-          headerLeft: () => (
-            <Ionicons 
-              name="close" 
-              size={24} 
-              color="#FF3B30" 
-              onPress={() => router.back()}
-              style={styles.closeButton}
-            />
-          ),
-        }} 
-      />
-      
+      <CustomHeader title="Add New Racquet" onBack={() => router.back()} />
       <ScrollView style={styles.form}>
         <View>
           <View style={styles.section}>

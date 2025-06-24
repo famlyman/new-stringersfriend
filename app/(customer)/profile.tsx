@@ -1,14 +1,16 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useAuth } from '../../src/contexts/AuthContext';
+import CustomHeader from '../../src/components/CustomHeader';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
   const { session, signOut } = useAuth();
   const router = useRouter();
 
   return (
-    <View style={styles.container}>
-      <Stack.Screen options={{ title: 'My Profile' }} />
+    <SafeAreaView style={styles.container}>
+      <CustomHeader title="My Profile" />
       
       {session ? (
         <View style={styles.content}>
@@ -31,7 +33,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 

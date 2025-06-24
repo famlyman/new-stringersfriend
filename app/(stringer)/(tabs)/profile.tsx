@@ -3,8 +3,13 @@ import { View, Text, TextInput, StyleSheet, TouchableOpacity, ActivityIndicator,
 import { useAuth } from '../../../src/contexts/AuthContext';
 import { supabase } from '../../../src/lib/supabase';
 import { useRouter } from 'expo-router';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import CustomHeader from '../../../src/components/CustomHeader';
+import { Button } from '../../../src/components/ui/Button';
+import { Card } from '../../../src/components/ui/Card';
+import { Text as UI_Text } from '../../../src/components/ui/Text';
+import { UI_KIT, SPACING } from '../../../src/styles/uiKit';
 
 interface ProfileFormData {
   shopName: string;
@@ -149,317 +154,147 @@ export default function ProfileScreen() {
     setEditing(false);
   };
 
-  const renderForm = () => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Shop Information</Text>
-      <View style={styles.field}>
-        <Text style={styles.label}>Shop Name</Text>
-        {editing ? (
-          <TextInput
-            style={styles.input}
-            value={formData.shopName}
-            onChangeText={(value) => handleInputChange('shopName', value)}
-            placeholder="Enter shop name"
-          />
-        ) : (
-          <Text style={styles.value}>{formData.shopName}</Text>
-        )}
-      </View>
-      <View style={styles.field}>
-        <Text style={styles.label}>Owner Name</Text>
-        {editing ? (
-          <TextInput
-            style={styles.input}
-            value={formData.ownerName}
-            onChangeText={(value) => handleInputChange('ownerName', value)}
-            placeholder="Enter owner name"
-          />
-        ) : (
-          <Text style={styles.value}>{formData.ownerName}</Text>
-        )}
-      </View>
-      <View style={styles.field}>
-        <Text style={styles.label}>Email</Text>
-        <Text style={styles.value}>{session?.user?.email}</Text>
-      </View>
-      <View style={styles.field}>
-        <Text style={styles.label}>Phone</Text>
-        {editing ? (
-          <TextInput
-            style={styles.input}
-            value={formData.phone}
-            onChangeText={handlePhoneChange}
-            placeholder="(XXX) XXX-XXXX"
-            keyboardType="phone-pad"
-            maxLength={14}
-          />
-        ) : (
-          <Text style={styles.value}>{formData.phone}</Text>
-        )}
-      </View>
-      <View style={styles.field}>
-        <Text style={styles.label}>Address</Text>
-        {editing ? (
-          <TextInput
-            style={[styles.input, styles.multilineInput]}
-            value={formData.address}
-            onChangeText={(value) => handleInputChange('address', value)}
-            placeholder="Enter address"
-            multiline
-            numberOfLines={3}
-          />
-        ) : (
-          <Text style={styles.value}>{formData.address}</Text>
-        )}
-      </View>
-      <View style={styles.field}>
-        <Text style={styles.label}>Business Hours</Text>
-        {editing ? (
-          <TextInput
-            style={[styles.input, styles.multilineInput]}
-            value={formData.businessHours}
-            onChangeText={(value) => handleInputChange('businessHours', value)}
-            placeholder="Enter business hours"
-            multiline
-            numberOfLines={4}
-          />
-        ) : (
-          <Text style={styles.value}>{formData.businessHours}</Text>
-        )}
-      </View>
-      <View style={styles.field}>
-        <Text style={styles.label}>Bio</Text>
-        {editing ? (
-          <TextInput
-            style={[styles.input, styles.multilineInput]}
-            value={formData.bio}
-            onChangeText={(value) => handleInputChange('bio', value)}
-            placeholder="Tell us about yourself"
-            multiline
-            numberOfLines={4}
-          />
-        ) : (
-          <Text style={styles.value}>{formData.bio}</Text>
-        )}
-      </View>
-    </View>
-  );
-
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={UI_KIT.colors.primary} />
       </View>
     );
   }
 
+  const renderField = (label: string, value: string, placeholder: string, field: keyof ProfileFormData, multiline = false, keyboardType: 'default' | 'phone-pad' = 'default', maxLength?: number) => (
+    <View style={{ marginBottom: SPACING.md }}>
+      <UI_Text variant="label" style={{ marginBottom: SPACING.xs }}>{label}</UI_Text>
+      {editing ? (
+        <TextInput
+          style={[UI_KIT.input.base, multiline && styles.multilineInput]}
+          value={value}
+          onChangeText={(text) => handleInputChange(field, text)}
+          placeholder={placeholder}
+          multiline={multiline}
+          keyboardType={keyboardType}
+          maxLength={maxLength}
+        />
+      ) : (
+        <UI_Text style={styles.value}>{value || 'Not set'}</UI_Text>
+      )}
+    </View>
+  );
+
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.replace('/(stringer)/(tabs)/settings')} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#007AFF" />
-        </TouchableOpacity>
-        <Text style={styles.title}>Profile</Text>
-        {!editing && (
-          <TouchableOpacity onPress={() => setEditing(true)} style={styles.editButton}>
-            <Text style={styles.editButtonText}>Edit</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+    <View style={styles.container}>
+      <CustomHeader 
+        title="Profile"
+        onBack={() => router.replace('/(stringer)/(tabs)/settings')}
+        rightContent={
+          !editing && (
+            <Button
+              title="Edit"
+              onPress={() => setEditing(true)}
+              variant="outline"
+              size="small"
+              style={{ borderColor: UI_KIT.colors.white }}
+              textStyle={{ color: UI_KIT.colors.white }}
+            />
+          )
+        }
+      />
 
       {error && (
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error}</Text>
+          <UI_Text style={styles.errorText}>{error}</UI_Text>
         </View>
       )}
 
-      <View style={styles.contentContainer}>
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={[styles.scrollViewContent, { paddingBottom: 120 + insets.bottom }]}
-        >
-          {renderForm()}
-        </ScrollView>
-
-        {editing && (
-          <View style={[styles.buttonContainer, { paddingBottom: insets.bottom }] }>
-            <TouchableOpacity 
-              onPress={handleCancel} 
-              style={[styles.button, styles.cancelButton]}
-              disabled={saving}
-            >
-              <Text style={[styles.buttonText, styles.cancelButtonText]}>
-                Cancel
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={handleSave} 
-              style={[styles.button, styles.saveButton]}
-              disabled={saving}
-            >
-              <Text style={styles.buttonText}>
-                {saving ? 'Saving...' : 'Save'}
-              </Text>
-            </TouchableOpacity>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[styles.scrollViewContent, { paddingBottom: insets.bottom + 20 }]}
+      >
+        <Card variant="base" style={{ margin: SPACING.md }}>
+          <UI_Text variant="h3" style={{ marginBottom: SPACING.lg }}>Shop Information</UI_Text>
+          
+          {renderField('Shop Name', formData.shopName, 'Enter shop name', 'shopName')}
+          {renderField('Owner Name', formData.ownerName, 'Enter owner name', 'ownerName')}
+          
+          <View style={{ marginBottom: SPACING.md }}>
+            <UI_Text variant="label" style={{ marginBottom: SPACING.xs }}>Email</UI_Text>
+            <UI_Text style={styles.value}>{session?.user?.email}</UI_Text>
           </View>
-        )}
-      </View>
-    </SafeAreaView>
+
+          {renderField('Phone', formData.phone, '(XXX) XXX-XXXX', 'phone', false, 'phone-pad', 14)}
+          {renderField('Address', formData.address, 'Enter address', 'address', true)}
+          {renderField('Business Hours', formData.businessHours, 'Enter business hours', 'businessHours', true)}
+          {renderField('Bio', formData.bio, 'Tell us about yourself', 'bio', true)}
+
+          {editing && (
+            <View style={styles.buttonContainer}>
+              <Button 
+                onPress={handleCancel} 
+                title="Cancel"
+                variant="outline"
+                style={{ flex: 1, marginRight: SPACING.sm }}
+                disabled={saving}
+              />
+              <Button 
+                onPress={handleSave} 
+                title="Save"
+                variant="primary"
+                style={{ flex: 1, marginLeft: SPACING.sm }}
+                disabled={saving}
+                loading={saving}
+              />
+            </View>
+          )}
+        </Card>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-  },
-  contentContainer: {
-    flex: 1,
-    position: 'relative',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    backgroundColor: '#fff',
+    backgroundColor: UI_KIT.colors.background,
   },
   scrollView: {
     flex: 1,
   },
   scrollViewContent: {
-    paddingBottom: 120, // Increased padding to account for the button container
-  },
-  section: {
-    padding: 16,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 16,
-  },
-  field: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: '#fff',
-    minHeight: 44,
+    paddingBottom: 20,
   },
   multilineInput: {
     height: 100,
     textAlignVertical: 'top',
-    paddingTop: 12,
+    paddingTop: SPACING.sm,
   },
   value: {
-    fontSize: 16,
-    color: '#333',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
+    ...UI_KIT.input.base,
+    backgroundColor: UI_KIT.colors.lightGray,
+    color: UI_KIT.colors.text,
+    lineHeight: 20, // Adjust for vertical alignment
   },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    backgroundColor: 'white',
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    marginBottom: 65, // Add margin to avoid overlap with safe area
-  },
-  button: {
-    flex: 1,
-    padding: 14,
-    borderRadius: 8,
-    marginHorizontal: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cancelButton: {
-    backgroundColor: '#f8f9fa',
-    borderWidth: 1,
-    borderColor: '#dee2e6',
-  },
-  saveButton: {
-    backgroundColor: '#007AFF',
-  },
-  buttonText: {
-    color: 'white',
-    textAlign: 'center',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  cancelButtonText: {
-    color: '#495057',
-  },
-  editButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 6,
-  },
-  editButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.lg,
+    marginTop: SPACING.md,
   },
   errorContainer: {
-    padding: 16,
+    padding: SPACING.md,
     backgroundColor: '#f8d7da',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f5c6cb',
-    marginHorizontal: 16,
-    marginTop: 8,
-    borderRadius: 8,
+    marginHorizontal: SPACING.md,
+    marginTop: SPACING.sm,
+    borderRadius: UI_KIT.borderRadius.md,
   },
   errorText: {
     color: '#721c24',
     textAlign: 'center',
-    fontSize: 14,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  backButton: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: UI_KIT.colors.white,
   },
 }); 

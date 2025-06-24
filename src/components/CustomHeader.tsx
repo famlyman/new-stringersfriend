@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Menu } from 'react-native-paper';
 import { UI_KIT } from '../styles/uiKit';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface CustomHeaderProps {
   title: string;
@@ -33,21 +34,27 @@ const CustomHeader: React.FC<CustomHeaderProps> = ({
   children,
   titleStyle,
 }) => {
-  // Always use navy for header, gray for title and icons
+  // Always use navy for header, white for title and icons
   const headerBg = UI_KIT.colors.navy;
-  const titleColor = UI_KIT.colors.gray;
-  const iconColor = UI_KIT.colors.gray;
+  const titleColor = UI_KIT.colors.white;
+  const iconColor = UI_KIT.colors.white;
   return (
-    <View style={[styles.container, { backgroundColor: headerBg }] }>
-      <View style={styles.headerContainer}>
+    <SafeAreaView style={{ backgroundColor: 'white' }} edges={['top']}>
+      <StatusBar 
+        barStyle="dark-content" 
+        backgroundColor="white"
+        translucent={false}
+      />
+      <View style={[styles.headerContainer, { backgroundColor: headerBg }]}>
         {onBack && (
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={28} color={UI_KIT.colors.gray} />
+            <Ionicons name="arrow-back" size={28} color={iconColor} />
           </TouchableOpacity>
         )}
         <Text
           style={[
             styles.title,
+            { color: titleColor },
             titleStyle,
           ]}
           numberOfLines={1}
@@ -87,22 +94,17 @@ const CustomHeader: React.FC<CustomHeaderProps> = ({
         )}
         {children}
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: UI_KIT.colors.navy,
-  },
   headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: UI_KIT.colors.navy,
-    paddingTop: Platform.OS === 'ios' ? 56 : 32,
     paddingBottom: 16,
     paddingHorizontal: 16,
-    borderBottomWidth: 0,
     minHeight: 64,
   },
   backButton: {
@@ -112,7 +114,7 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
     textAlign: 'center',
-    color: UI_KIT.colors.gray,
+    color: UI_KIT.colors.white,
     fontSize: 28,
     fontWeight: 'bold',
     textAlignVertical: 'center',

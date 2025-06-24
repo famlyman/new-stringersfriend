@@ -2,13 +2,13 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState, useEffect } from 'react';
 import { Text, View, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../../../../src/lib/supabase';
-import { Card } from '../../../../src/components/ui/Card';
-import { Text as UI_Text } from '../../../../src/components/ui/Text';
-import { Button } from '../../../../src/components/ui/Button';
-import { UI_KIT } from '../../../../src/styles/uiKit';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import CustomHeader from '../../../../src/components/CustomHeader';
+import { supabase } from '../../../../../src/lib/supabase';
+import { Card } from '../../../../../src/components/ui/Card';
+import { Text as UI_Text } from '../../../../../src/components/ui/Text';
+import { Button } from '../../../../../src/components/ui/Button';
+import { UI_KIT } from '../../../../../src/styles/uiKit';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import CustomHeader from '../../../../../src/components/CustomHeader';
 
 interface RacquetDetail {
   id: string;
@@ -33,6 +33,7 @@ interface RacquetDetail {
 export default function EditRacquetScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const insets = useSafeAreaInsets();
 
   const [loading, setLoading] = useState(true);
   const [brandName, setBrandName] = useState<string>('');
@@ -155,8 +156,7 @@ export default function EditRacquetScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: UI_KIT.colors.background }}>
-        <Stack.Screen options={{ headerShown: false }} />
+      <View style={{ flex: 1, backgroundColor: UI_KIT.colors.background }}>
         <CustomHeader
           title="Edit Racquet"
           onBack={() => router.back()}
@@ -165,19 +165,23 @@ export default function EditRacquetScreen() {
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color={UI_KIT.colors.primary} />
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: UI_KIT.colors.background }}>
-      <Stack.Screen options={{ headerShown: false }} />
+    <View style={{ flex: 1, backgroundColor: UI_KIT.colors.background }}>
       <CustomHeader
         title="Edit Racquet"
         onBack={() => router.back()}
         titleStyle={{ textAlignVertical: 'center' }}
+        rightContent={
+          <TouchableOpacity onPress={handleSave} disabled={loading}>
+            {loading ? <ActivityIndicator color="#fff" /> : <Ionicons name="save-outline" size={24} color="#fff" />}
+          </TouchableOpacity>
+        }
       />
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: UI_KIT.spacing.xl, padding: UI_KIT.spacing.md }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: insets.bottom + UI_KIT.spacing.xl, padding: UI_KIT.spacing.md }}>
         <Card variant="base" style={{ marginBottom: UI_KIT.spacing.lg }}>
           <UI_Text variant="h3" style={{ marginBottom: UI_KIT.spacing.md }}>Racquet Information</UI_Text>
           <View style={{ marginBottom: UI_KIT.spacing.md }}>
@@ -284,17 +288,8 @@ export default function EditRacquetScreen() {
             />
           </View>
         </Card>
-        <Button
-          title={loading ? 'Saving...' : 'Save Racquet'}
-          onPress={handleSave}
-          variant="primary"
-          loading={loading}
-          style={{ marginTop: UI_KIT.spacing.lg, marginBottom: UI_KIT.spacing.xl }}
-          icon="save-outline"
-          disabled={loading}
-        />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

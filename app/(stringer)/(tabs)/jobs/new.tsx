@@ -894,16 +894,11 @@ export default function NewJobScreen() {
   const insets = useSafeAreaInsets();
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: UI_KIT.colors.background }}>
-      <Stack.Screen options={{ headerShown: false }} />
-      <CustomHeader
-        title="New Job"
-        onBack={() => router.back()}
-        titleStyle={{ textAlignVertical: 'center' }}
-      />
+    <View style={styles.container}>
+      <CustomHeader title="New Job" onBack={() => router.back()} />
       <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: UI_KIT.spacing.xl * 2 + insets.bottom, padding: UI_KIT.spacing.md }}
+        style={styles.scrollView}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
       >
         <Card variant="base" style={{ marginBottom: UI_KIT.spacing.lg }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: UI_KIT.spacing.md }}>
@@ -989,7 +984,7 @@ export default function NewJobScreen() {
         icon="checkmark"
         disabled={isLoading}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 

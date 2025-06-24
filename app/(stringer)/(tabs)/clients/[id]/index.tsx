@@ -1,7 +1,7 @@
-import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../../../../src/lib/supabase';
 import { Card } from '../../../../../src/components/ui/Card';
 import { Text } from '../../../../../src/components/ui/Text';
@@ -39,6 +39,7 @@ function formatPhoneNumber(phone: string) {
 export default function ClientDetailsScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  const insets = useSafeAreaInsets();
   const [client, setClient] = useState<ClientDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [mainBrand, setMainBrand] = useState<string>('');
@@ -117,8 +118,7 @@ export default function ClientDetailsScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: UI_KIT.colors.background }}>
-        <Stack.Screen options={{ headerShown: false }} />
+      <View style={{ flex: 1, backgroundColor: UI_KIT.colors.background }}>
         <CustomHeader
           title="Client Details"
           onBack={() => router.back()}
@@ -127,14 +127,13 @@ export default function ClientDetailsScreen() {
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color={UI_KIT.colors.primary} />
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (invalidId) {
     return (
-      <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: UI_KIT.colors.background }}>
-        <Stack.Screen options={{ headerShown: false }} />
+      <View style={{ flex: 1, backgroundColor: UI_KIT.colors.background }}>
         <CustomHeader
           title="Client Details"
           onBack={() => router.back()}
@@ -143,14 +142,13 @@ export default function ClientDetailsScreen() {
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <Text variant="body">Invalid client ID.</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (!client) {
     return (
-      <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: UI_KIT.colors.background }}>
-        <Stack.Screen options={{ headerShown: false }} />
+      <View style={{ flex: 1, backgroundColor: UI_KIT.colors.background }}>
         <CustomHeader
           title="Client Details"
           onBack={() => router.back()}
@@ -159,14 +157,13 @@ export default function ClientDetailsScreen() {
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <Text variant="body">Client not found</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: UI_KIT.colors.background }}>
+    <View style={{ flex: 1, backgroundColor: UI_KIT.colors.background }}>
       {/* StatusBar is now set globally in (tabs)/_layout.tsx using expo-status-bar. Do not set it here. */}
-      <Stack.Screen options={{ headerShown: false }} />
       <CustomHeader
         title="Client Details"
         onBack={() => router.back()}
@@ -174,7 +171,7 @@ export default function ClientDetailsScreen() {
       />
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: UI_KIT.spacing.xl }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + UI_KIT.spacing.xl }}
       >
         {/* Client Info Card */}
         <Card
@@ -270,7 +267,7 @@ export default function ClientDetailsScreen() {
           </Text>
         </Card>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 // The clients directory and its contents have been moved to app/(stringer)/(tabs)/clients
