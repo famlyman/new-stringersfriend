@@ -67,6 +67,7 @@ export default function JobForm({
   const [filteredStringModels, setFilteredStringModels] = useState<{ id: string; label: string }[]>([]);
   const [selectedCrossStringBrandId, setSelectedCrossStringBrandId] = useState<string>('');
   const [filteredCrossStringModels, setFilteredCrossStringModels] = useState<{ id: string; label: string }[]>([]);
+  const [selectedModelId, setSelectedModelId] = useState<string>('');
 
   useEffect(() => {
     if (selectedBrandId) {
@@ -101,6 +102,16 @@ export default function JobForm({
     }
   }, [selectedCrossStringBrandId, stringModels]);
 
+  useEffect(() => {
+    // When racquet_id changes, update selectedModelId to match the model_id of the selected racquet
+    const racquet = racquets.find(r => r.id === formData.racquet_id);
+    if (racquet && racquet.model_id) {
+      setSelectedModelId(racquet.model_id);
+    } else {
+      setSelectedModelId('');
+    }
+  }, [formData.racquet_id, racquets]);
+
   const handleInputChange = (field: keyof JobFormData, value: string) => {
     setFormData(prev => ({
       ...prev,
@@ -116,12 +127,11 @@ export default function JobForm({
   };
 
   const handleModelChange = (modelId: string) => {
-
+    setSelectedModelId(modelId);
     // Find the racquet that matches both the selected brand and model
     const matchingRacquet = racquets.find(
       r => r.brand_id === selectedBrandId && r.model_id === modelId
     );
-
     if (matchingRacquet) {
       handleInputChange('racquet_id', matchingRacquet.id);
     } else {
@@ -231,7 +241,11 @@ export default function JobForm({
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={{ paddingBottom: 48 }}
+      keyboardShouldPersistTaps="handled"
+    >
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Client</Text>
         <SearchableDropdown
@@ -262,7 +276,7 @@ export default function JobForm({
         <SearchableDropdown
           label="Model"
           items={modelItems}
-          value={formData.racquet_id || ''}
+          value={selectedModelId}
           onChange={handleModelChange}
           searchFields={['label']}
           placeholder="Select a model..."

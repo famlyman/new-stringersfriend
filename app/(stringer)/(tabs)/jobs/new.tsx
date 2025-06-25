@@ -1,13 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, ScrollView, TouchableOpacity, Text, TextInput, Platform, Alert, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Text, TextInput, Platform, Alert, ActivityIndicator, ScrollView as RNScrollView } from 'react-native';
 import { useAuth } from '../../../../src/contexts/AuthContext';
 import { supabase } from '../../../../src/lib/supabase';
 import SearchableDropdown from '../../../components/SearchableDropdown';
-import CustomAlert from '../../../components/CustomAlert'; // Import CustomAlert
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card } from '../../../../src/components/ui/Card';
 import { Text as UIText } from '../../../../src/components/ui/Text';
 import { Button } from '../../../../src/components/ui/Button';
@@ -16,6 +14,8 @@ import CustomHeader from '../../../../src/components/CustomHeader';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ClientForm from '../../../../src/components/ClientForm';
 import RacquetForm from '../../../../src/components/RacquetForm';
+import JobForm from '../../../components/JobForm';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 
 // --- UPDATED TYPES ---
 
@@ -552,89 +552,80 @@ export default function NewJobScreen() {
     }
   };
 
-  const handleSubmit = async () => {
-    if (!selectedClientId || !selectedRacquetId) {
+  const handleSubmit = async (jobFormData: any) => {
+    const { client_id, racquet_id, job_type = 'stringing', job_status = 'pending', notes, due_date, stringer_id, tension_main, tension_cross, price, string_id, cross_string_id } = jobFormData;
+    if (!client_id || !racquet_id) {
       showAlert('Error', 'Please select a client and racquet');
       return;
     }
-
     if (!session?.user?.id) {
       showAlert('Authentication Error', 'User not authenticated.');
       return;
     }
-
     try {
       setIsLoading(true);
-
-      // --- 1. Update racquet details if changed ---
-      if (editableRacquet) {
-        const { error: updateRacquetError } = await supabase
-          .from('racquets')
-          .update({
-            head_size: editableRacquet.head_size,
-            weight_grams: editableRacquet.weight_grams,
-            balance_point: editableRacquet.balance_point,
-            string_pattern: editableRacquet.string_pattern,
-            stringing_notes: (editableRacquet.string_mains || editableRacquet.string_crosses)
-              ? `Mains: ${editableRacquet.string_mains || ''}, Tension: ${editableRacquet.string_tension_mains || ''} lbs; Crosses: ${editableRacquet.string_crosses || ''}, Tension: ${editableRacquet.string_tension_crosses || ''} lbs.`
-              : null,
-            last_stringing_date: editableRacquet.string_date || new Date().toISOString().split('T')[0],
-            notes: editableRacquet.notes // Save racquet notes
-          })
-          .eq('id', editableRacquet.id);
-
-        if (updateRacquetError) throw updateRacquetError;
-      }
-
-      // --- 2. Create the Job entry ---
+      // Insert the job into the jobs table
       const { data: jobData, error: jobError } = await supabase
         .from('jobs')
         .insert([{
-          client_id: selectedClientId,
-          racquet_id: selectedRacquetId,
+          client_id,
+          racquet_id,
           stringer_id: session.user.id,
-          job_type: formData.job_type,
-          job_status: formData.job_status,
-          job_notes: formData.job_notes || null, // Save client notes as job notes
-          due_date: formData.due_date || null
+          job_type,
+          job_status,
+          job_notes: notes || null,
+          due_date: due_date || null
         }])
         .select()
         .single();
-
       if (jobError) throw jobError;
       if (!jobData) {
         showAlert('Error', 'Failed to retrieve new job details.');
         return;
       }
-
-      // --- 3. Create the Job Stringing Details entry (if it's a stringing job) ---
-      if (formData.job_type === 'stringing' && editableRacquet) {
-        // Resolve string model IDs from entered names
-        const mainStringModelId = await fetchStringModelByName(editableRacquet.string_mains || '');
-        const crossStringModelId = await fetchStringModelByName(editableRacquet.string_crosses || '');
-
-        const jobStringingDetails: JobStringingDetailsFormData = {
-          job_id: jobData.id,
-          main_string_model_id: mainStringModelId,
-          cross_string_model_id: crossStringModelId,
-          // Ensure tension values are numbers or null
-          tension_main: editableRacquet.string_tension_mains || null,
-          tension_cross: editableRacquet.string_tension_crosses || null,
-          price: null, // You'll need a way to capture this if not pre-set
-        };
-
+      // Insert into job_stringing_details if job_type is stringing
+      if (job_type === 'stringing') {
         const { error: stringingDetailsError } = await supabase
           .from('job_stringing_details')
-          .insert([jobStringingDetails]);
-
+          .insert([{
+            job_id: jobData.id,
+            tension_main: tension_main ? Number(tension_main) : null,
+            tension_cross: tension_cross ? Number(tension_cross) : null,
+            price: price ? Number(price) : null,
+            main_string_model_id: string_id ? Number(string_id) : null,
+            cross_string_model_id: cross_string_id ? Number(cross_string_id) : null
+          }]);
         if (stringingDetailsError) throw stringingDetailsError;
       }
 
+      // NOW, let's build and save the QR code data
+      const racquet = clientRacquets.find(r => r.id === racquet_id);
+      const mainString = stringInventory.find(s => s.id === string_id);
+      const crossString = stringInventory.find(s => s.id === cross_string_id);
+
+      if (racquet) {
+        const qrCodePayload = {
+          id: racquet_id,
+          setup: {
+            brand: racquet.brand,
+            model: racquet.model,
+            mains: `${mainString ? mainString.brand + ' ' + mainString.model : 'N/A'} @ ${tension_main || 'N/A'}`,
+            crosses: `${crossString ? crossString.brand + ' ' + crossString.model : 'N/A'} @ ${tension_cross || 'N/A'}`,
+            date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+          }
+        };
+
+        await supabase
+          .from('racquets')
+          .update({ qr_code_data: JSON.stringify(qrCodePayload) })
+          .eq('id', racquet_id);
+      }
+
       showAlert('Success', 'Job created successfully!');
-      router.back();
-    } catch (error: any) {
+      router.replace('/(stringer)/(tabs)/jobs');
+    } catch (error) {
       console.error('Error creating job:', error);
-      showAlert('Error', error.message || 'Failed to create job. Please try again.');
+      showAlert('Error', (error as Error).message || 'Failed to create job. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -679,6 +670,13 @@ export default function NewJobScreen() {
                   <Text style={styles.racquetName}>
                     {editableRacquet.brand} {editableRacquet.model}
                   </Text>
+                  <Button
+                    title="Generate QR Code"
+                    onPress={showQRCode}
+                    variant="outline"
+                    icon="qr-code"
+                    style={{ marginTop: 8 }}
+                  />
                 </View>
               </View>
             )}
@@ -894,28 +892,327 @@ export default function NewJobScreen() {
   };
 
   const insets = useSafeAreaInsets();
-  const [segment, setSegment] = useState<'addClient' | 'addRacquet'>('addClient');
+  const [segment, setSegment] = useState<'createJob' | 'addClient' | 'addRacquet' | 'scanQR'>('createJob');
+  const [scanned, setScanned] = useState(false);
+  const cameraRef = useRef(null);
+  const [permission, requestPermission] = useCameraPermissions();
+  const hasPermission = permission?.granted ?? null;
+
+  const handleBarCodeScanned = (result: { data: string }) => {
+    setScanned(true);
+    try {
+      const racquetData = JSON.parse(result.data);
+      if (racquetData.racquetId) {
+        fetchRacquetById(racquetData.racquetId);
+      } else if (racquetData.brand && racquetData.model) {
+        populateFormFromQR(racquetData);
+      } else {
+        showAlert('Invalid QR Code', 'The scanned QR code does not contain valid racquet data.');
+      }
+    } catch (error) {
+      showAlert('Error', 'Failed to process QR code data. Please try again.');
+    }
+  };
+
+  // Fetch racquet by ID from the database
+  const fetchRacquetById = async (racquetId: string) => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('racquets')
+        .select(`
+          id,
+          brand:brands!inner(name),
+          model:models!inner(name),
+          head_size,
+          weight_grams,
+          balance_point,
+          string_pattern,
+          stringing_notes,
+          last_stringing_date,
+          notes,
+          client_id,
+          clients!inner(id, full_name)
+        `)
+        .eq('id', racquetId)
+        .single();
+
+      if (error) throw error;
+      if (!data) {
+        showAlert('Not Found', 'Racquet not found in the database.');
+        return;
+      }
+
+      // Find or create the client
+      const clientData = data as any;
+      if (clientData.client_id) {
+        const client = {
+          id: clientData.client_id,
+          full_name: clientData.clients?.full_name || 'Unknown Client'
+        };
+        
+        const existingClient = clients.find(c => c.id === client.id);
+        if (!existingClient) {
+          // Add the client to the local state if not already present
+          setClients(prev => [...prev, client]);
+        }
+        setSelectedClientId(client.id);
+        setFormData(prev => ({ ...prev, client_id: client.id }));
+      }
+
+      // Populate the racquet data
+      const racquetData = data as unknown as RacquetResponse;
+      const racquet: Racquet = {
+        id: racquetData.id,
+        brand: racquetData.brand?.name || '',
+        model: racquetData.model?.name || '',
+        head_size: racquetData.head_size,
+        weight_grams: racquetData.weight_grams,
+        balance_point: racquetData.balance_point,
+        string_pattern: racquetData.string_pattern,
+        string_mains: racquetData.stringing_notes?.split('Mains: ')[1]?.split(',')[0]?.trim() || '',
+        string_crosses: racquetData.stringing_notes?.split('Crosses: ')[1]?.split(',')[0]?.trim() || '',
+        string_tension_mains: null,
+        string_tension_crosses: null,
+        string_date: racquetData.last_stringing_date,
+        notes: racquetData.notes,
+        stringing_notes: racquetData.stringing_notes
+      };
+
+      setClientRacquets([racquet]);
+      setSelectedRacquetId(racquet.id);
+      setEditableRacquet(racquet);
+      setFormData(prev => ({ ...prev, racquet_id: racquet.id }));
+      
+      // Switch to the main form view
+      setSegment('addRacquet');
+      
+    } catch (error) {
+      console.error('Error fetching racquet:', error);
+      showAlert('Error', 'Failed to fetch racquet details. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Populate form with data from QR code
+  const populateFormFromQR = (data: any) => {
+    // Create a new racquet object from the scanned data
+    const racquet: Racquet = {
+      id: data.id || '',
+      brand: data.brand || '',
+      model: data.model || '',
+      head_size: data.head_size || null,
+      weight_grams: data.weight_grams || null,
+      balance_point: data.balance_point || null,
+      string_pattern: data.string_pattern || null,
+      string_mains: data.string_mains || '',
+      string_crosses: data.string_crosses || '',
+      string_tension_mains: data.string_tension_mains || null,
+      string_tension_crosses: data.string_tension_crosses || null,
+      string_date: data.string_date || null,
+      notes: data.notes || '',
+      stringing_notes: data.stringing_notes || ''
+    };
+
+    // Update the form state
+    setClientRacquets([racquet]);
+    setSelectedRacquetId(racquet.id);
+    setEditableRacquet(racquet);
+    setFormData(prev => ({
+      ...prev,
+      racquet_id: racquet.id,
+      client_id: data.client_id || ''
+    }));
+
+    // If we have client data, update the client selection
+    if (data.client_id) {
+      setSelectedClientId(data.client_id);
+    }
+
+    // Switch to the main form view
+    setSegment('addRacquet');
+  };
+
+  // Generate a QR code data string for a racquet
+  const generateQRData = (racquet: Racquet): string => {
+    const racquetData = {
+      racquetId: racquet.id,
+      brand: racquet.brand,
+      model: racquet.model,
+      head_size: racquet.head_size,
+      weight_grams: racquet.weight_grams,
+      balance_point: racquet.balance_point,
+      string_pattern: racquet.string_pattern,
+      string_mains: racquet.string_mains,
+      string_crosses: racquet.string_crosses,
+      string_tension_mains: racquet.string_tension_mains,
+      string_tension_crosses: racquet.string_tension_crosses,
+      string_date: racquet.string_date,
+      notes: racquet.notes,
+      stringing_notes: racquet.stringing_notes,
+      client_id: selectedClientId
+    };
+    return JSON.stringify(racquetData);
+  };
+
+  // Show QR code for the current racquet
+  const showQRCode = () => {
+    if (!editableRacquet) return;
+    
+    const qrData = generateQRData(editableRacquet);
+    
+    // In a real app, you would show a modal with the QR code
+    // For now, we'll just show an alert with the data
+    Alert.alert(
+      'Racquet QR Code',
+      'Scan this QR code to quickly load this racquet\n\n' +
+      `Brand: ${editableRacquet.brand}\n` +
+      `Model: ${editableRacquet.model}\n` +
+      `String Pattern: ${editableRacquet.string_pattern || 'N/A'}`,
+      [
+        {
+          text: 'OK',
+          style: 'default',
+        },
+      ]
+    );
+  };
   const [newClientId, setNewClientId] = useState<string | null>(null);
   const [newRacquetId, setNewRacquetId] = useState<string | null>(null);
 
+  // Add state for racquet brands, models, and string inventory
+  const [racquetBrands, setRacquetBrands] = useState<{ id: string; name: string }[]>([]);
+  const [racquetModels, setRacquetModels] = useState<{ id: string; name: string; brand_id: string }[]>([]);
+  const [stringInventory, setStringInventory] = useState<any[]>([]); // Adjust type as needed
+
+  // Fetch racquet brands
+  useEffect(() => {
+    const fetchRacquetBrands = async () => {
+      const { data, error } = await supabase.from('brands').select('id, name').order('name');
+      if (!error && data) setRacquetBrands(data.map((b: any) => ({ id: b.id.toString(), name: b.name })));
+    };
+    fetchRacquetBrands();
+  }, []);
+
+  // Fetch racquet models
+  useEffect(() => {
+    const fetchRacquetModels = async () => {
+      const { data, error } = await supabase.from('models').select('id, name, brand_id').order('name');
+      if (!error && data) setRacquetModels(data.map((m: any) => ({ id: m.id.toString(), name: m.name, brand_id: m.brand_id.toString() })));
+    };
+    fetchRacquetModels();
+  }, []);
+
+  // Fetch string inventory
+  useEffect(() => {
+    const fetchStringInventory = async () => {
+      const { data, error } = await supabase.from('string_inventory').select('*');
+      if (!error && data) setStringInventory(data);
+    };
+    fetchStringInventory();
+  }, []);
+
   return (
     <View style={styles.container}>
-      <CustomHeader title="New Job" onBack={() => router.back()} />
+      <CustomHeader title="New Job" onBack={() => router.replace('/(stringer)/(tabs)/jobs')} />
       {/* Segmented Control */}
-      <View style={{ flexDirection: 'row', justifyContent: 'center', marginVertical: UI_KIT.spacing.md }}>
+      <RNScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.segmentedControlScroll}>
+        <Button
+          title="Create Job"
+          variant={segment === 'createJob' ? 'primary' : 'outline'}
+          onPress={() => setSegment('createJob')}
+          style={{
+            paddingVertical: 0,
+            paddingHorizontal: 4,
+            minWidth: 0,
+            height: 28,
+            borderRadius: 8,
+            marginRight: 2,
+          }}
+          textStyle={{ fontSize: 13, fontWeight: '600' }}
+          size="small"
+        />
         <Button
           title="Add Client"
           variant={segment === 'addClient' ? 'primary' : 'outline'}
           onPress={() => setSegment('addClient')}
-          style={{ marginRight: UI_KIT.spacing.sm }}
+          style={{
+            paddingVertical: 0,
+            paddingHorizontal: 4,
+            minWidth: 0,
+            height: 28,
+            borderRadius: 8,
+            marginRight: 2,
+          }}
+          textStyle={{ fontSize: 13, fontWeight: '600' }}
+          size="small"
         />
         <Button
           title="Add Racquet"
           variant={segment === 'addRacquet' ? 'primary' : 'outline'}
           onPress={() => setSegment('addRacquet')}
+          style={{
+            paddingVertical: 0,
+            paddingHorizontal: 4,
+            minWidth: 0,
+            height: 28,
+            borderRadius: 8,
+            marginRight: 2,
+          }}
+          textStyle={{ fontSize: 13, fontWeight: '600' }}
+          size="small"
         />
-      </View>
+        <Button
+          title="Scan QR Code"
+          variant={segment === 'scanQR' ? 'primary' : 'outline'}
+          onPress={() => setSegment('scanQR')}
+          icon="qr-code"
+          style={{
+            paddingVertical: 0,
+            paddingHorizontal: 4,
+            minWidth: 0,
+            height: 28,
+            borderRadius: 8,
+            marginRight: 2,
+          }}
+          textStyle={{ fontSize: 13, fontWeight: '600' }}
+          size="small"
+        />
+      </RNScrollView>
       {/* Segment Content */}
+      {segment === 'createJob' && (
+        <JobForm
+          initialData={{}}
+          onSubmit={handleSubmit}
+          isLoading={isLoading}
+          submitButtonText="Create Job"
+          clients={clients}
+          racquets={clientRacquets.map(r => {
+            // Find brand_id and model_id by matching names
+            const brand = racquetBrands.find(b => b.name === r.brand);
+            const model = racquetModels.find(m => m.name === r.model && m.brand_id === (brand?.id || ''));
+            return {
+              ...r,
+              head_size: r.head_size ?? undefined,
+              weight_grams: r.weight_grams ?? undefined,
+              balance_point: r.balance_point ?? undefined,
+              string_pattern: r.string_pattern ?? undefined,
+              notes: r.notes ?? undefined,
+              brand_id: brand?.id,
+              model_id: model?.id,
+            };
+          })}
+          strings={stringInventory}
+          brands={racquetBrands}
+          models={racquetModels}
+          stringBrands={stringBrands.map(b => ({ string_id: b.id.toString(), string_brand: b.name }))}
+          stringModels={stringModels.filter((m): m is { id: number; name: string; brand?: { id: number; name: string } } => m !== null).map(m => ({ model_id: m.id.toString(), model: m.name, brand_id: m.brand?.id?.toString?.() || '' }))}
+          onAddClient={() => setSegment('addClient')}
+          onAddRacquet={() => setSegment('addRacquet')}
+          onAddString={() => {}}
+        />
+      )}
       {segment === 'addClient' && (
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: UI_KIT.spacing.xl }}>
           <Card variant="base" style={{ margin: UI_KIT.spacing.md }}>
@@ -945,7 +1242,28 @@ export default function NewJobScreen() {
           </Card>
         </ScrollView>
       )}
-      
+      {segment === 'scanQR' && (
+        <View style={{ flex: 1 }}>
+          {hasPermission === null ? (
+            <Text>Requesting camera permission...</Text>
+          ) : hasPermission === false ? (
+            <Text>No access to camera</Text>
+          ) : (
+            <CameraView
+              ref={cameraRef}
+              style={{ flex: 1 }}
+              facing="back"
+              onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+              barcodeScannerSettings={{
+                barcodeTypes: ['qr'],
+              }}
+            />
+          )}
+          {scanned && (
+            <Button title="Scan Again" onPress={() => setScanned(false)} />
+          )}
+        </View>
+      )}
     </View>
   );
 }
@@ -1087,5 +1405,27 @@ const styles = StyleSheet.create({
   notesInput: {
     height: 100,
     textAlignVertical: 'top',
+  },
+  segmentedControlScroll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 2,
+    backgroundColor: 'red', // DEBUG: highlight segment area
+    height: 40, // Fixed height to tightly wrap buttons
+    paddingVertical: 0,
+    paddingHorizontal: 4,
+  },
+  segmentButton: {
+    marginRight: 4,
+    minWidth: 80,
+    paddingHorizontal: 2,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  segmentButtonActive: {
+    // Optionally add a stronger shadow or border for the active button
+    // borderWidth: 2,
+    // borderColor: '#007AFF',
   },
 });

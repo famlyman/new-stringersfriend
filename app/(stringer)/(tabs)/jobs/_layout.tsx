@@ -1,7 +1,7 @@
 // app/(stringer)/(tabs)/jobs/_layout.tsx
 import { Stack, useRouter } from 'expo-router';
 import React from 'react';
-import { Pressable, Platform } from 'react-native';
+import { Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 

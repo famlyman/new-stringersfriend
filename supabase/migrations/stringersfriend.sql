@@ -98,6 +98,7 @@ CREATE TABLE public.racquets (
   is_active boolean NOT NULL DEFAULT true,
   last_stringing_date date,
   stringing_notes text,
+  qr_code_data text,
   CONSTRAINT racquets_pkey PRIMARY KEY (id),
   CONSTRAINT racquets_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.clients(id),
   CONSTRAINT racquets_brand_id_fkey FOREIGN KEY (brand_id) REFERENCES public.brands(id),

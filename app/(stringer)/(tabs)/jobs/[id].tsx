@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, Platform, StatusBar } from 'react-native';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { JobStatus, statusConfig } from '../../../../src/types/job';
@@ -61,14 +61,33 @@ export default function JobDetailScreen() {
   const closeMenu = () => setMenuVisible(false);
   
   const handleBack = () => {
-    router.back();
+    router.replace('/(stringer)/(tabs)/jobs');
   };
 
+  const isValidUUID = useCallback((id: string) => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(id);
+  }, []);
+
   useEffect(() => {
-    if (id) {
-      fetchJob(id);
+    if (!id) return;
+    
+    if (id === 'new') {
+      // Redirect to the new job screen if the ID is 'new'
+      router.replace('/(stringer)/(tabs)/jobs/new');
+      return;
     }
-  }, [id, user?.id]);
+
+    if (!isValidUUID(id)) {
+      // Handle invalid ID
+      console.error('Invalid job ID');
+      router.replace('/(stringer)/(tabs)/jobs');
+      return;
+    }
+
+    // Only fetch job if we have a valid UUID
+    fetchJob(id);
+  }, [id, user?.id, isValidUUID, router]);
 
   const fetchJob = async (jobId: string) => {
     setLoading(true);

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, TextInput, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { View, TextInput, StyleSheet, ScrollView, Alert, ActivityIndicator, Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import SearchableDropdown from '../../app/components/SearchableDropdown';
 import { Card } from './ui/Card';
 import { Text } from './ui/Text';
 import { Button } from './ui/Button';
 import { UI_KIT } from '../styles/uiKit';
+import { RacquetQRCode } from './RacquetQRCode';
 
 interface RacquetFormProps {
   preselectedClientId?: string;
@@ -25,6 +26,13 @@ const RacquetForm: React.FC<RacquetFormProps> = ({ preselectedClientId, onRacque
   const [stiffnessRating, setStiffnessRating] = useState('');
   const [lengthCm, setLengthCm] = useState('');
   const [notes, setNotes] = useState('');
+  const [showQRCode, setShowQRCode] = useState(false);
+  const [currentRacquet, setCurrentRacquet] = useState<{
+    id: string;
+    brand: string;
+    model: string;
+    clientName: string;
+  } | null>(null);
 
   useEffect(() => {
     fetchClients();
@@ -55,78 +63,166 @@ const RacquetForm: React.FC<RacquetFormProps> = ({ preselectedClientId, onRacque
       Alert.alert('Error', 'Please select a client and enter brand and model');
       return;
     }
+    
     setIsSubmitting(true);
+    
     try {
-      let { data: brandData, error: brandError } = await supabase
+      // Start a transaction
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      // 1. Handle Brand
+      let brandId: number;
+      
+      // First, try to find the brand case-insensitively
+      const { data: existingBrands, error: brandSearchError } = await supabase
         .from('brands')
-        .select('id')
-        .ilike('name', brand)
-        .maybeSingle();
-      if (brandError) throw brandError;
-      let brandId;
-      if (!brandData) {
+        .select('id, name')
+        .ilike('name', brand.trim());
+        
+      if (brandSearchError) {
+        console.error('Error searching for brand:', brandSearchError);
+        throw new Error('Failed to search for brand');
+      }
+      
+      const existingBrand = existingBrands && existingBrands.length > 0 ? existingBrands[0] : null;
+      
+      if (existingBrand) {
+        // Use existing brand
+        brandId = existingBrand.id;
+      } else {
+        // Create new brand with timestamp-based ID
+        const newBrandId = Date.now();
         const { data: newBrand, error: createBrandError } = await supabase
           .from('brands')
-          .insert([{ name: brand }])
+          .insert({ 
+            id: newBrandId,
+            name: brand.trim() 
+          })
           .select('id')
           .single();
-        if (createBrandError) throw createBrandError;
+          
+        if (createBrandError) {
+          console.error('Error creating brand:', createBrandError);
+          throw new Error('Failed to create brand');
+        }
+        
+        if (!newBrand) {
+          throw new Error('Failed to create brand: No data returned');
+        }
+        
         brandId = newBrand.id;
-      } else {
-        brandId = brandData.id;
       }
-      let { data: modelData, error: modelError } = await supabase
+      
+      // 2. Handle Model
+      let modelId: number;
+      
+      // Check if model exists for this brand
+      const { data: existingModel, error: modelSearchError } = await supabase
         .from('models')
         .select('id')
         .eq('brand_id', brandId)
-        .ilike('name', model)
+        .ilike('name', model.trim())
         .maybeSingle();
-      if (modelError) throw modelError;
-      let modelId;
-      if (!modelData) {
-        const { data: maxIdData, error: maxIdError } = await supabase
-          .from('models')
-          .select('id')
-          .order('id', { ascending: false })
-          .limit(1)
-          .single();
-        if (maxIdError && maxIdError.code !== 'PGRST116') throw maxIdError;
-        const nextId = maxIdData ? maxIdData.id + 1 : 1;
+        
+      if (modelSearchError) {
+        console.error('Error searching for model:', modelSearchError);
+        throw new Error('Failed to search for model');
+      }
+      
+      if (existingModel) {
+        // Use existing model
+        modelId = existingModel.id;
+      } else {
+        // Create new model with timestamp-based ID
+        const newModelId = Date.now() + 1; // Add 1 to ensure different from brand ID
         const { data: newModel, error: createModelError } = await supabase
           .from('models')
-          .insert({ id: nextId, name: model, brand_id: brandId })
+          .insert({
+            id: newModelId,
+            name: model.trim(),
+            brand_id: brandId
+          })
           .select('id')
           .single();
-        if (createModelError) throw createModelError;
+          
+        if (createModelError) {
+          console.error('Error creating model:', createModelError);
+          throw new Error('Failed to create model');
+        }
+        
+        if (!newModel) {
+          throw new Error('Failed to create model: No data returned');
+        }
+        
         modelId = newModel.id;
-      } else {
-        modelId = modelData.id;
       }
-      const { data: racquetData, error: insertRacquetError } = await supabase
+      // 3. Create the racquet
+      const racquetData = {
+        client_id: selectedClientId,
+        brand_id: brandId,
+        model_id: modelId,
+        head_size: headSize ? parseInt(headSize) : null,
+        string_pattern: stringPattern || null,
+        weight_grams: weightGrams ? parseInt(weightGrams) : null,
+        balance_point: balancePoint || null,
+        stiffness_rating: stiffnessRating || null,
+        length_cm: lengthCm ? parseInt(lengthCm) : null,
+        notes: notes.trim() || null
+      };
+      
+      const { data: newRacquet, error: insertRacquetError } = await supabase
         .from('racquets')
-        .insert({
-          client_id: selectedClientId,
-          brand_id: brandId,
-          model_id: modelId,
-          head_size: headSize ? parseInt(headSize) : null,
-          string_pattern: stringPattern || null,
-          weight_grams: weightGrams ? parseInt(weightGrams) : null,
-          balance_point: balancePoint || null,
-          stiffness_rating: stiffnessRating || null,
-          length_cm: lengthCm ? parseInt(lengthCm) : null,
-          notes: notes || null,
-        })
+        .insert(racquetData)
         .select('id, client_id')
         .single();
-      if (insertRacquetError) throw insertRacquetError;
-      if (onRacquetCreated) {
-        onRacquetCreated(racquetData.id, racquetData.client_id);
+        
+      if (insertRacquetError) {
+        console.error('Error creating racquet:', insertRacquetError);
+        throw new Error('Failed to create racquet');
       }
-      Alert.alert('Success', 'Racquet added successfully');
-      setBrand(''); setModel(''); setHeadSize(''); setStringPattern(''); setWeightGrams(''); setBalancePoint(''); setStiffnessRating(''); setLengthCm(''); setNotes('');
+      
+      if (!newRacquet) {
+        throw new Error('Failed to create racquet: No data returned');
+      }
+      
+      // Find the client name for the QR code
+      const client = clients.find(c => c.id === selectedClientId);
+      const racquetInfo = {
+        id: newRacquet.id,
+        brand: brand.trim(),
+        model: model.trim(),
+        clientName: client?.full_name || 'Unknown Client',
+      };
+      
+      // Set the current racquet and show QR code
+      setCurrentRacquet(racquetInfo);
+      setShowQRCode(true);
+      
+      // Call the success callback if provided
+      if (onRacquetCreated) {
+        onRacquetCreated(newRacquet.id, newRacquet.client_id);
+      }
+      
+      // Reset form but keep client selection
+      setBrand('');
+      setModel('');
+      setHeadSize('');
+      setStringPattern('');
+      setWeightGrams('');
+      setBalancePoint('');
+      setStiffnessRating('');
+      setLengthCm('');
+      setNotes('');
+      
     } catch (error) {
-      console.error('Error adding racquet:', error);
-      Alert.alert('Error', `Failed to add racquet. ${(error as Error).message}`);
+      console.error('Error in racquet submission:', error);
+      Alert.alert(
+        'Error',
+        error instanceof Error ? error.message : 'Failed to add racquet. Please try again.'
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -246,6 +342,18 @@ const RacquetForm: React.FC<RacquetFormProps> = ({ preselectedClientId, onRacque
           style={{ marginTop: UI_KIT.spacing.md }}
         />
       </Card>
+      
+      {/* QR Code Modal */}
+      <RacquetQRCode
+        visible={showQRCode}
+        onClose={() => setShowQRCode(false)}
+        racquetData={currentRacquet || {
+          id: '',
+          brand: '',
+          model: '',
+          clientName: '',
+        }}
+      />
     </ScrollView>
   );
 };

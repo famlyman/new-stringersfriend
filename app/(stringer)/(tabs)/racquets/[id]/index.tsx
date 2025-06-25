@@ -9,6 +9,7 @@ import CustomHeader from '../../../../../src/components/CustomHeader';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text as UIText } from '../../../../../src/components/ui/Text';
 import { Button } from '../../../../../src/components/ui/Button';
+import QRCode from 'react-native-qrcode-svg';
 
 interface RacquetDetail {
   id: string;
@@ -28,6 +29,7 @@ interface RacquetDetail {
   is_active: boolean;
   last_stringing_date: string | null;
   stringing_notes: string | null;
+  qr_code_data: string | null;
 }
 
 export default function RacquetDetailScreen() {
@@ -48,11 +50,15 @@ export default function RacquetDetailScreen() {
     try {
       const { data, error } = await supabase
         .from('racquets')
-        .select(`
+        .select(
+          `
           *,
-          brand:brands!racquets_brand_id_fkey(name),
-          model:models!racquets_model_id_fkey(name)
-        `)
+          brand:brands (name),
+          model:models (name),
+          client:clients (full_name),
+          qr_code_data
+          `
+        )
         .eq('id', racquetId)
         .single();
 
@@ -79,6 +85,7 @@ export default function RacquetDetailScreen() {
           is_active: data.is_active || true,
           last_stringing_date: data.last_stringing_date || null,
           stringing_notes: data.stringing_notes || null,
+          qr_code_data: data.qr_code_data || null,
         };
         setRacquet(transformedRacquet);
       }
@@ -133,42 +140,99 @@ export default function RacquetDetailScreen() {
         }
       />
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: insets.bottom + UI_KIT.spacing.xl }}>
-        <Card style={{ margin: UI_KIT.spacing.md, borderRadius: 12, backgroundColor: UI_KIT.colors.white, padding: UI_KIT.spacing.md, marginTop: UI_KIT.spacing.lg, marginBottom: UI_KIT.spacing.md }}>
+        {/* Main Info Card */}
+        <Card
+          style={{
+            margin: UI_KIT.spacing.md,
+            borderRadius: 12,
+            shadowColor: 'rgba(0,0,0,0.08)',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.08,
+            shadowRadius: 3,
+            elevation: 2,
+            backgroundColor: UI_KIT.colors.white,
+            padding: UI_KIT.spacing.md,
+            marginTop: UI_KIT.spacing.lg,
+            marginBottom: UI_KIT.spacing.md,
+          }}
+        >
           <UIText variant="h3" style={{ marginBottom: UI_KIT.spacing.sm }}>
             {racquet.brand?.name || 'N/A'} {racquet.model?.name || 'N/A'}
           </UIText>
-          <UIText variant="body" style={{ marginBottom: UI_KIT.spacing.xs, fontSize: 15 }}>
-            Head Size: {racquet.head_size || 'N/A'} sq. in.
-          </UIText>
-          <UIText variant="body" style={{ marginBottom: UI_KIT.spacing.xs, fontSize: 15 }}>
-            String Pattern: {racquet.string_pattern || 'N/A'}
-          </UIText>
-          <UIText variant="body" style={{ marginBottom: UI_KIT.spacing.xs, fontSize: 15 }}>
-            Weight: {racquet.weight_grams || 'N/A'} g
-          </UIText>
-          <UIText variant="body" style={{ marginBottom: UI_KIT.spacing.xs, fontSize: 15 }}>
-            Balance Point: {racquet.balance_point || 'N/A'}
-          </UIText>
-          <UIText variant="body" style={{ marginBottom: UI_KIT.spacing.xs, fontSize: 15 }}>
-            Stiffness Rating: {racquet.stiffness_rating || 'N/A'}
-          </UIText>
-          <UIText variant="body" style={{ marginBottom: UI_KIT.spacing.xs, fontSize: 15 }}>
-            Length: {racquet.length_cm || 'N/A'} cm
-          </UIText>
-          <UIText variant="body" style={{ marginBottom: UI_KIT.spacing.xs, fontSize: 15 }}>
-            Last Stringing Date: {racquet.last_stringing_date ? new Date(racquet.last_stringing_date).toLocaleDateString() : 'N/A'}
-          </UIText>
         </Card>
+        {/* Details Card */}
+        <Card
+          style={{
+            margin: UI_KIT.spacing.md,
+            backgroundColor: UI_KIT.colors.white,
+            padding: UI_KIT.spacing.md,
+            borderRadius: 12,
+            shadowColor: 'rgba(0,0,0,0.08)',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.08,
+            shadowRadius: 3,
+            elevation: 2,
+          }}
+        >
+          <UIText variant="h4" style={{ marginBottom: UI_KIT.spacing.sm }}>
+            Racquet Specs
+          </UIText>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+            <View style={{ width: '48%', marginBottom: UI_KIT.spacing.sm }}>
+              <UIText variant="label" style={{ fontWeight: 'bold' }}>Head Size</UIText>
+              <UIText variant="body">{racquet.head_size || 'N/A'} sq. in.</UIText>
+            </View>
+            <View style={{ width: '48%', marginBottom: UI_KIT.spacing.sm }}>
+              <UIText variant="label" style={{ fontWeight: 'bold' }}>String Pattern</UIText>
+              <UIText variant="body">{racquet.string_pattern || 'N/A'}</UIText>
+            </View>
+            <View style={{ width: '48%', marginBottom: UI_KIT.spacing.sm }}>
+              <UIText variant="label" style={{ fontWeight: 'bold' }}>Weight</UIText>
+              <UIText variant="body">{racquet.weight_grams || 'N/A'} g</UIText>
+            </View>
+            <View style={{ width: '48%', marginBottom: UI_KIT.spacing.sm }}>
+              <UIText variant="label" style={{ fontWeight: 'bold' }}>Balance Point</UIText>
+              <UIText variant="body">{racquet.balance_point || 'N/A'}</UIText>
+            </View>
+            <View style={{ width: '48%', marginBottom: UI_KIT.spacing.sm }}>
+              <UIText variant="label" style={{ fontWeight: 'bold' }}>Stiffness Rating</UIText>
+              <UIText variant="body">{racquet.stiffness_rating || 'N/A'}</UIText>
+            </View>
+            <View style={{ width: '48%', marginBottom: UI_KIT.spacing.sm }}>
+              <UIText variant="label" style={{ fontWeight: 'bold' }}>Length</UIText>
+              <UIText variant="body">{racquet.length_cm || 'N/A'} cm</UIText>
+            </View>
+            <View style={{ width: '48%', marginBottom: UI_KIT.spacing.sm }}>
+              <UIText variant="label" style={{ fontWeight: 'bold' }}>Last Stringing Date</UIText>
+              <UIText variant="body">{racquet.last_stringing_date ? new Date(racquet.last_stringing_date).toLocaleDateString() : 'N/A'}</UIText>
+            </View>
+          </View>
+        </Card>
+        {/* Stringing Notes Card */}
         {racquet.stringing_notes && (
-          <Card style={{ margin: UI_KIT.spacing.md, backgroundColor: UI_KIT.colors.white, padding: UI_KIT.spacing.md, borderRadius: 12 }}>
+          <Card style={{ margin: UI_KIT.spacing.md, backgroundColor: UI_KIT.colors.white, padding: UI_KIT.spacing.md, borderRadius: 12, shadowColor: 'rgba(0,0,0,0.08)', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 3, elevation: 2 }}>
             <UIText variant="h4" style={{ marginBottom: UI_KIT.spacing.sm }}>Stringing Notes</UIText>
             <UIText variant="body" style={{ fontSize: 15 }}>{racquet.stringing_notes}</UIText>
           </Card>
         )}
+        {/* Notes Card */}
         {racquet.notes && (
-          <Card style={{ margin: UI_KIT.spacing.md, backgroundColor: UI_KIT.colors.white, padding: UI_KIT.spacing.md, borderRadius: 12 }}>
+          <Card style={{ margin: UI_KIT.spacing.md, backgroundColor: UI_KIT.colors.white, padding: UI_KIT.spacing.md, borderRadius: 12, shadowColor: 'rgba(0,0,0,0.08)', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 3, elevation: 2 }}>
             <UIText variant="h4" style={{ marginBottom: UI_KIT.spacing.sm }}>Notes</UIText>
             <UIText variant="body" style={{ fontSize: 15 }}>{racquet.notes}</UIText>
+          </Card>
+        )}
+        {racquet?.qr_code_data && (
+          <Card style={styles.card}>
+            <UIText style={styles.sectionTitle}>Racquet QR Code</UIText>
+            <View style={styles.qrContainer}>
+              <QRCode
+                value={typeof racquet.qr_code_data === 'string' ? racquet.qr_code_data : JSON.stringify(racquet.qr_code_data)}
+                size={150}
+                backgroundColor={UI_KIT.colors.white}
+                color={UI_KIT.colors.text}
+              />
+            </View>
           </Card>
         )}
       </ScrollView>
@@ -281,5 +345,21 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
     color: '#333',
+  },
+  card: {
+    margin: UI_KIT.spacing.md,
+    backgroundColor: UI_KIT.colors.white,
+    padding: UI_KIT.spacing.md,
+    borderRadius: 12,
+    shadowColor: 'rgba(0,0,0,0.08)',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  qrContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: UI_KIT.spacing.md,
   },
 }); 
