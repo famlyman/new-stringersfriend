@@ -862,55 +862,53 @@ export default function NewJobScreen() {
           </View>
         </View>
         {/* Create Job button always visible for debug */}
-        <View style={{ margin: 12 }}>
-          <Button
-            title="Create Job"
-            onPress={async () => {
-              if (!selectedClientId || !selectedRacquetId || !editableRacquet) {
-                showAlert('Error', 'Please select a client and racquet.');
-                return;
-              }
-              setIsLoading(true);
-              try {
-                // Insert job
-                const { data: jobData, error: jobError } = await supabase
-                  .from('jobs')
-                  .insert([{
-                    client_id: selectedClientId,
-                    racquet_id: selectedRacquetId,
-                    stringer_id: session?.user?.id || '',
-                    job_type: 'stringing',
-                    job_status: 'pending',
-                    job_notes: editableRacquet.notes || null,
-                  }])
-                  .select()
-                  .single();
-                if (jobError || !jobData) throw jobError || new Error('Failed to create job');
-                // Insert job_stringing_details
-                const { error: stringingError } = await supabase
-                  .from('job_stringing_details')
-                  .insert([{
-                    job_id: jobData.id,
-                    tension_main: editableRacquet.string_tension_mains ? Number(editableRacquet.string_tension_mains) : null,
-                    tension_cross: editableRacquet.string_tension_crosses ? Number(editableRacquet.string_tension_crosses) : null,
-                    price: null,
-                    main_string_model_id: null,
-                    cross_string_model_id: null,
-                  }]);
-                if (stringingError) throw stringingError;
-                showAlert('Success', 'Job created successfully!');
-                // Optionally, navigate away or reset state
-              } catch (error) {
-                showAlert('Error', (error as Error).message || 'Failed to create job.');
-              } finally {
-                setIsLoading(false);
-              }
-            }}
-            loading={isLoading}
-            style={{ marginTop: 16 }}
-            disabled={!editableRacquet}
-          />
-        </View>
+        <Button
+          title="Create Job"
+          onPress={async () => {
+            if (!selectedClientId || !selectedRacquetId || !editableRacquet) {
+              showAlert('Error', 'Please select a client and racquet.');
+              return;
+            }
+            setIsLoading(true);
+            try {
+              // Insert job
+              const { data: jobData, error: jobError } = await supabase
+                .from('jobs')
+                .insert([{
+                  client_id: selectedClientId,
+                  racquet_id: selectedRacquetId,
+                  stringer_id: session?.user?.id || '',
+                  job_type: 'stringing',
+                  job_status: 'pending',
+                  job_notes: editableRacquet.notes || null,
+                }])
+                .select()
+                .single();
+              if (jobError || !jobData) throw jobError || new Error('Failed to create job');
+              // Insert job_stringing_details
+              const { error: stringingError } = await supabase
+                .from('job_stringing_details')
+                .insert([{
+                  job_id: jobData.id,
+                  tension_main: editableRacquet.string_tension_mains ? Number(editableRacquet.string_tension_mains) : null,
+                  tension_cross: editableRacquet.string_tension_crosses ? Number(editableRacquet.string_tension_crosses) : null,
+                  price: null,
+                  main_string_model_id: null,
+                  cross_string_model_id: null,
+                }]);
+              if (stringingError) throw stringingError;
+              showAlert('Success', 'Job created successfully!');
+              // Optionally, navigate away or reset state
+            } catch (error) {
+              showAlert('Error', (error as Error).message || 'Failed to create job.');
+            } finally {
+              setIsLoading(false);
+            }
+          }}
+          loading={isLoading}
+          style={{ margin: 12, marginTop: 16 }}
+          disabled={!editableRacquet}
+        />
       </View>
     );
   };
@@ -960,7 +958,7 @@ export default function NewJobScreen() {
       {/* Main Content Area */}
       <View style={{ flex: 1 }}>
         {segment === 'createJob' && (
-          <ScrollView contentContainerStyle={{ paddingBottom: UI_KIT.spacing.xl }}>
+          <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: UI_KIT.spacing.xl }}>
             {/* Client selection dropdown */}
             <View style={{ margin: 12 }}>
               <Text style={{ fontWeight: 'bold', marginBottom: 4 }}>Select Client</Text>
