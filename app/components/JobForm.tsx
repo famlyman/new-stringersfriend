@@ -128,6 +128,22 @@ export default function JobForm({
     }
   }, [formData.racquet_id, racquets]);
 
+  // Autofill form fields from racquet when racquet_id changes
+  useEffect(() => {
+    const racquet = racquets.find(r => r.id === formData.racquet_id);
+    if (racquet) {
+      setFormData(prev => ({
+        ...prev,
+        tension_main: racquet.string_tension_mains?.toString() || '',
+        tension_cross: racquet.string_tension_crosses?.toString() || '',
+        // If you have string_id/cross_string_id, set them here too
+        // string_id: racquet.main_string_model_id?.toString() || '',
+        // cross_string_id: racquet.cross_string_model_id?.toString() || '',
+        // ...add more as needed
+      }));
+    }
+  }, [formData.racquet_id, racquets]);
+
   // DEBUG: Log racquet dropdown value and items
   useEffect(() => {
     if (racquets && racquets.length > 0) {

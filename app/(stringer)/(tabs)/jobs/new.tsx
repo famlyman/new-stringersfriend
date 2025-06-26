@@ -16,6 +16,7 @@ import ClientForm from '../../../../src/components/ClientForm';
 import RacquetForm from '../../../../src/components/RacquetForm';
 import JobForm from '../../../components/JobForm';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { Racquet } from '../../../../src/types/racquet';
 
 // --- UPDATED TYPES ---
 
@@ -87,28 +88,6 @@ type RacquetResponse = {
   clients?: { id: string; full_name: string };
 };
 
-// Racquet: Local representation of racquet data for editable form.
-// This type is used after transforming RacquetResponse to simplify the form.
-type Racquet = {
-  id: string;
-  brand: string; // The name of the brand
-  model: string; // The name of the model
-  brand_id?: string;
-  model_id?: string;
-  client_id?: string;
-  head_size?: number | null;
-  weight_grams?: number | null; // Renamed to match DB
-  balance_point?: string | null;
-  string_pattern?: string | null;
-  string_mains?: string | null; // String name notes on racquet (from stringing_notes)
-  string_crosses?: string | null; // String name notes on racquet (from stringing_notes)
-  string_tension_mains?: number | null; // Tension notes on racquet (from DB)
-  string_tension_crosses?: number | null; // Tension notes on racquet (from DB)
-  string_date?: string | null; // Last stringing date (from DB)
-  notes?: string | null; // General racquet notes
-  stringing_notes?: string | null; // Previous stringing notes
-};
-
 // JobFormData: job_type and job_status are now ENUMs in DB but sent as strings from client
 type JobFormData = {
   client_id: string;
@@ -118,6 +97,12 @@ type JobFormData = {
   job_notes?: string | null;
   due_date?: string | null;
   stringer_id: string;
+  // Added for QR autofill
+  tension_main?: number | string | null;
+  tension_cross?: number | string | null;
+  price?: number | string | null;
+  string_id?: number | string | null;
+  cross_string_id?: number | string | null;
 };
 
 // New type for job_stringing_details data
@@ -131,6 +116,13 @@ type JobStringingDetailsFormData = {
 };
 
 export default function NewJobScreen() {
+  // Helper function to safely parse tension values
+  const parseTension = (notes: string | null, pattern: string): number | undefined => {
+    if (!notes) return undefined;
+    const match = notes.match(new RegExp(`${pattern}:[^@]+@\\s*(\\d+)`));
+    return match ? parseFloat(match[1]) : undefined;
+  };
+
   const [selectedMainBrandId, setSelectedMainBrandId] = useState<number | null>(null);
   const [selectedMainModelId, setSelectedMainModelId] = useState<number | null>(null);
   const [selectedCrossBrandId, setSelectedCrossBrandId] = useState<number | null>(null);
@@ -403,29 +395,30 @@ export default function NewJobScreen() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      // Log the stringified data to see the full nested structure
-      const stringifiedData = JSON.stringify(data, null, 2);
-
-      const racquetsData = (data || []) as unknown as RacquetResponse[]; // Cast to unknown first to avoid type errors
-      // FIX: The select query returns brand and model as arrays, not single objects. Adjust mapping.
-      const transformedRacquets = racquetsData.map(racquet => ({
-        id: racquet.id,
-        brand: Array.isArray((racquet as any).brand) ? (racquet as any).brand[0]?.name ?? '' : (racquet as any).brand?.name ?? '',
-        model: Array.isArray((racquet as any).model) ? (racquet as any).model[0]?.name ?? '' : (racquet as any).model?.name ?? '',
-        head_size: racquet.head_size,
-        weight_grams: racquet.weight_grams,
-        balance_point: racquet.balance_point,
-        string_pattern: racquet.string_pattern,
-        string_mains: racquet.stringing_notes?.split('Mains: ')[1]?.split(',')[0]?.trim() || '',
-        string_crosses: racquet.stringing_notes?.split('Crosses: ')[1]?.split(',')[0]?.trim() || '',
-        string_tension_mains: null,
-        string_tension_crosses: null,
-        string_date: racquet.last_stringing_date,
-        notes: racquet.notes,
-        stringing_notes: racquet.stringing_notes // Include the full stringing notes
-      }));
-
-      setClientRacquets(transformedRacquets);
+      const racquetsData = (data || []) as unknown as RacquetResponse[];
+      // For each racquet, fetch the latest job and stringing details
+      const racquetsWithStringing = racquetsData.map(racquet => {
+        const brand = Array.isArray((racquet as any).brand) ? (racquet as any).brand[0]?.name ?? '' : (racquet as any).brand?.name ?? '';
+        const model = Array.isArray((racquet as any).model) ? (racquet as any).model[0]?.name ?? '' : (racquet as any).model?.name ?? '';
+        // No async fetching of stringing details here
+        return {
+          id: racquet.id,
+          brand,
+          model,
+          head_size: racquet.head_size,
+          weight_grams: racquet.weight_grams,
+          balance_point: racquet.balance_point,
+          string_pattern: racquet.string_pattern,
+          string_mains: racquet.stringing_notes?.split('Mains: ')[1]?.split(',')[0]?.trim() || '',
+          string_crosses: racquet.stringing_notes?.split('Crosses: ')[1]?.split(',')[0]?.trim() || '',
+          string_tension_mains: parseTension(racquet.stringing_notes, 'Mains'),
+          string_tension_crosses: parseTension(racquet.stringing_notes, 'Crosses'),
+          string_date: racquet.last_stringing_date,
+          notes: racquet.notes,
+          stringing_notes: racquet.stringing_notes,
+        };
+      });
+      setClientRacquets(racquetsWithStringing);
     } catch (error) {
       console.error('Error fetching client racquets:', error);
       showAlert('Error', 'Failed to load client racquets');
@@ -609,29 +602,6 @@ export default function NewJobScreen() {
         if (stringingDetailsError) throw stringingDetailsError;
       }
 
-      // NOW, let's build and save the QR code data
-      const racquet = clientRacquets.find(r => r.id === racquet_id);
-      const mainString = stringInventory.find(s => s.id === string_id);
-      const crossString = stringInventory.find(s => s.id === cross_string_id);
-
-      if (racquet) {
-        const qrCodePayload = {
-          id: racquet_id,
-          setup: {
-            brand: racquet.brand,
-            model: racquet.model,
-            mains: `${mainString ? mainString.brand + ' ' + mainString.model : 'N/A'} @ ${tension_main || 'N/A'}`,
-            crosses: `${crossString ? crossString.brand + ' ' + crossString.model : 'N/A'} @ ${tension_cross || 'N/A'}`,
-            date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
-          }
-        };
-
-        await supabase
-          .from('racquets')
-          .update({ qr_code_data: JSON.stringify(qrCodePayload) })
-          .eq('id', racquet_id);
-      }
-
       showAlert('Success', 'Job created successfully!');
       router.replace('/(stringer)/(tabs)/jobs');
     } catch (error) {
@@ -681,13 +651,6 @@ export default function NewJobScreen() {
                   <Text style={styles.racquetName}>
                     {editableRacquet.brand} {editableRacquet.model}
                   </Text>
-                  <Button
-                    title="Generate QR Code"
-                    onPress={showQRCode}
-                    variant="outline"
-                    icon="qr-code"
-                    style={{ marginTop: 8 }}
-                  />
                 </View>
               </View>
             )}
@@ -898,328 +861,65 @@ export default function NewJobScreen() {
             )}
           </View>
         </View>
+        {/* Create Job button always visible for debug */}
+        <View style={{ margin: 12 }}>
+          <Button
+            title="Create Job"
+            onPress={async () => {
+              if (!selectedClientId || !selectedRacquetId || !editableRacquet) {
+                showAlert('Error', 'Please select a client and racquet.');
+                return;
+              }
+              setIsLoading(true);
+              try {
+                // Insert job
+                const { data: jobData, error: jobError } = await supabase
+                  .from('jobs')
+                  .insert([{
+                    client_id: selectedClientId,
+                    racquet_id: selectedRacquetId,
+                    stringer_id: session?.user?.id || '',
+                    job_type: 'stringing',
+                    job_status: 'pending',
+                    job_notes: editableRacquet.notes || null,
+                  }])
+                  .select()
+                  .single();
+                if (jobError || !jobData) throw jobError || new Error('Failed to create job');
+                // Insert job_stringing_details
+                const { error: stringingError } = await supabase
+                  .from('job_stringing_details')
+                  .insert([{
+                    job_id: jobData.id,
+                    tension_main: editableRacquet.string_tension_mains ? Number(editableRacquet.string_tension_mains) : null,
+                    tension_cross: editableRacquet.string_tension_crosses ? Number(editableRacquet.string_tension_crosses) : null,
+                    price: null,
+                    main_string_model_id: null,
+                    cross_string_model_id: null,
+                  }]);
+                if (stringingError) throw stringingError;
+                showAlert('Success', 'Job created successfully!');
+                // Optionally, navigate away or reset state
+              } catch (error) {
+                showAlert('Error', (error as Error).message || 'Failed to create job.');
+              } finally {
+                setIsLoading(false);
+              }
+            }}
+            loading={isLoading}
+            style={{ marginTop: 16 }}
+            disabled={!editableRacquet}
+          />
+        </View>
       </View>
     );
   };
 
   const insets = useSafeAreaInsets();
-  const [segment, setSegment] = useState<'createJob' | 'addClient' | 'addRacquet' | 'scanQR'>('createJob');
-  const [qrModalVisible, setQrModalVisible] = useState(false);
-  const cameraRef = useRef(null);
-  const [permission, requestPermission] = useCameraPermissions();
-  const hasPermission = permission?.granted ?? null;
+  const [segment, setSegment] = useState<'createJob' | 'addClient' | 'addRacquet'>('createJob');
 
-  const handleBarCodeScanned = (result: { data: string }) => {
-    setQrModalVisible(false);
-    try {
-      const qrData = JSON.parse(result.data);
-      if (qrData.id) {
-        fetchRacquetById(qrData.id);
-      } else if (qrData.setup) {
-        populateFormFromQR(qrData.setup);
-      }
-    } catch (error) {
-      showAlert('Error', 'Failed to process QR code data. Please try again.');
-    }
-  };
-
-  // Fetch racquet by ID from the database
-  const fetchRacquetById = async (racquetId: string) => {
-    try {
-      setIsLoading(true);
-      const { data, error } = await supabase
-        .from('racquets')
-        .select('id, brand:brand_id(id, name), brand_id, model:model_id(id, name), model_id, client_id, head_size, weight_grams, balance_point, string_pattern, stringing_notes, last_stringing_date, notes, clients(id, full_name)')
-        .eq('id', racquetId)
-        .single();
-
-      if (error) throw error;
-      if (!data) {
-        showAlert('Not Found', 'Racquet not found in the database.');
-        return;
-      }
-
-      // Find or create the client
-      const clientData = data as any;
-      if (clientData.client_id) {
-        const client = {
-          id: clientData.client_id,
-          full_name: clientData.clients?.full_name || 'Unknown Client'
-        };
-        
-        const existingClient = clients.find(c => c.id === client.id);
-        if (!existingClient) {
-          // Add the client to the local state if not already present
-          setClients(prev => [...prev, client]);
-        }
-        setSelectedClientId(client.id);
-        setFormData(prev => ({ ...prev, client_id: client.id }));
-      }
-
-      // Populate the racquet data
-      if (!data) return;
-      
-      // Type assertion for the data object to handle both array and object types for brand/model
-      const racquetData = data as unknown as {
-        id: string;
-        brand: { id: number; name: string } | { id: number; name: string }[];
-        model: { id: number; name: string } | { id: number; name: string }[];
-        brand_id: number;
-        model_id: number;
-        client_id: string | null;
-        head_size: number | null;
-        weight_grams: number | null;
-        balance_point: string | null;
-        string_pattern: string | null;
-        stringing_notes: string | null;
-        last_stringing_date: string | null;
-        notes: string | null;
-        clients?: { id: string; full_name: string }[];
-      };
-
-      // Helper function to safely parse tension values
-      const parseTension = (notes: string | null, pattern: string): number | undefined => {
-        if (!notes) return undefined;
-        const match = notes.match(new RegExp(`${pattern}:[^@]+@\\s*(\\d+)`));
-        return match ? parseFloat(match[1]) : undefined;
-      };
-      const brandObj = Array.isArray((racquetData as any).brand) ? (racquetData as any).brand[0] ?? { id: 0, name: '' } : racquetData.brand ?? { id: 0, name: '' };
-      const modelObj = Array.isArray((racquetData as any).model) ? (racquetData as any).model[0] ?? { id: 0, name: '' } : racquetData.model ?? { id: 0, name: '' };
-      const racquet: Racquet = {
-        id: racquetData.id || '',
-        brand: brandObj.name ?? '',
-        brand_id: racquetData.brand_id != null ? racquetData.brand_id.toString() : '',
-        model: modelObj.name ?? '',
-        model_id: racquetData.model_id != null ? racquetData.model_id.toString() : '',
-        client_id: racquetData.client_id || '',
-        head_size: racquetData.head_size === null ? undefined : racquetData.head_size,
-        weight_grams: racquetData.weight_grams === null ? undefined : racquetData.weight_grams,
-        balance_point: racquetData.balance_point ?? undefined,
-        string_pattern: racquetData.string_pattern ?? undefined,
-        string_mains: racquetData.stringing_notes?.match(/Mains:\s*([^,]+)/)?.[1]?.trim() || '',
-        string_crosses: racquetData.stringing_notes?.match(/Crosses:\s*([^,]+)/)?.[1]?.trim() || '',
-        string_tension_mains: parseTension(racquetData.stringing_notes, 'Mains'),
-        string_tension_crosses: parseTension(racquetData.stringing_notes, 'Crosses'),
-        string_date: racquetData.last_stringing_date ?? null,
-        notes: racquetData.notes ?? '',
-        stringing_notes: racquetData.stringing_notes ?? '',
-      };
-
-      // Fetch most recent job_stringing_details for this racquet
-      const { data: jobDetails, error: jobDetailsError } = await supabase
-        .from('job_stringing_details')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-      let tension_main = '';
-      let tension_cross = '';
-      let price = '';
-      if (jobDetails != null) {
-        tension_main = jobDetails.tension_main != null ? jobDetails.tension_main.toString() : '';
-        tension_cross = jobDetails.tension_cross != null ? jobDetails.tension_cross.toString() : '';
-        price = jobDetails.price != null ? jobDetails.price.toString() : '';
-      }
-
-      setClientRacquets(prev => {
-        const exists = prev.some(r => r.id === racquet.id);
-        if (exists) return prev;
-        return [...prev, racquet];
-      });
-      setSelectedRacquetId(racquet.id);
-      setEditableRacquet(racquet);
-      setFormData((prev: JobFormData) => ({
-        client_id: racquet.client_id || prev.client_id,
-        racquet_id: racquet.id,
-        job_type: prev.job_type,
-        job_status: prev.job_status,
-        stringer_id: prev.stringer_id,
-        job_notes: prev.job_notes || null,
-        due_date: prev.due_date || null,
-      }));
-    } catch (error) {
-      console.error('Error fetching racquet:', error);
-      showAlert('Error', 'Failed to fetch racquet details. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Populate form with data from QR code
-  const populateFormFromQR = async (data: any) => {
-    if (!data) return;
-    // Always use IDs for lookups, keep names for display
-    const brand_id: string = data.brand_id?.toString() || '';
-    const model_id: string = data.model_id?.toString() || '';
-    const brand = racquetBrands.find(b => b.id.toString() === brand_id);
-    const model = racquetModels.find(m => m.id.toString() === model_id);
-    const racquet: Racquet = {
-      id: data.id || '',
-      brand_id,
-      brand: data.brand || brand?.name || '',
-      model_id,
-      model: data.model || model?.name || '',
-      head_size: data.head_size ?? null,
-      weight_grams: data.weight_grams ?? null,
-      balance_point: data.balance_point ?? null,
-      string_pattern: data.string_pattern ?? null,
-      string_mains: data.string_mains ?? '',
-      string_crosses: data.string_crosses ?? '',
-      string_tension_mains: data.string_tension_mains ?? null,
-      string_tension_crosses: data.string_tension_crosses ?? null,
-      string_date: data.string_date ?? null,
-      notes: data.notes ?? '',
-      stringing_notes: data.stringing_notes ?? '',
-      client_id: data.client_id || '',
-    };
-    setClientRacquets(prev => {
-      const exists = prev.some(r => r.id === racquet.id);
-      if (exists) return prev;
-      return [...prev, racquet];
-    });
-    setSelectedRacquetId(racquet.id);
-    setEditableRacquet(racquet);
-    // Only set client if it exists in the local clients list
-    let clientIdToSet = '';
-    if (data.client_id) {
-      const clientExists = clients.some(c => c.id === data.client_id);
-      if (clientExists) {
-        clientIdToSet = data.client_id;
-        setSelectedClientId(data.client_id);
-      } else {
-        showAlert('Client Not Found', 'The client from this QR code is not in your database. Please add them first.');
-      }
-    }
-    setFormData(prev => ({
-      ...prev,
-      racquet_id: data.id ? data.id : racquet.id,
-      client_id: data.client_id ? clientIdToSet : prev.client_id
-    }));
-
-    // After setting racquet and formData, fetch job_stringing_details if job_id is present
-    if (data.job_id) {
-      let tension_main = '';
-      let tension_cross = '';
-      let price = '';
-      const { data: jobDetails, error: jobDetailsError } = await supabase
-        .from('job_stringing_details')
-        .select('*')
-        .eq('job_id', data.job_id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-      if (jobDetails != null) {
-         tension_main = jobDetails.tension_main != null ? jobDetails.tension_main.toString() : '';
-         tension_cross = jobDetails.tension_cross != null ? jobDetails.tension_cross.toString() : '';
-         price = jobDetails.price != null ? jobDetails.price.toString() : '';
-         setFormData((prev: JobFormData) => ({
-           client_id: prev.client_id || '',
-           racquet_id: prev.racquet_id || '',
-           job_type: prev.job_type,
-           job_status: prev.job_status,
-           stringer_id: prev.stringer_id,
-           job_notes: prev.job_notes || null,
-           due_date: prev.due_date || null,
-         }));
-       }
-     }
-  };
-
-  // Generate a QR code data string for a racquet
-  const generateQRData = (racquet: Racquet): string => {
-    // Find brand and model names if not present
-    let brandName = racquet.brand;
-    let modelName = racquet.model;
-    if ((!brandName || !modelName) && racquetBrands && racquetModels) {
-      const brandId = racquet.brand_id ?? '';
-      const modelId = racquet.model_id ?? '';
-      if (!brandName && brandId) {
-        const brand = racquetBrands.find(b => b.id.toString() === brandId.toString());
-        brandName = brand?.name || '';
-      }
-      if (!modelName && modelId) {
-        const model = racquetModels.find(m => m.id.toString() === modelId.toString());
-        modelName = model?.name || '';
-      }
-    }
-    const racquetData = {
-      id: racquet.id,
-      brand_id: (racquet.brand_id ?? '').toString(),
-      brand: brandName || '',
-      model_id: (racquet.model_id ?? '').toString(),
-      model: modelName || '',
-      head_size: racquet.head_size === null ? undefined : racquet.head_size,
-      weight_grams: racquet.weight_grams === null ? undefined : racquet.weight_grams,
-      balance_point: racquet.balance_point ?? undefined,
-      string_pattern: racquet.string_pattern ?? undefined,
-      string_mains: racquet.string_mains ?? '',
-      string_crosses: racquet.string_crosses ?? '',
-      string_tension_mains: racquet.string_tension_mains === null ? undefined : racquet.string_tension_mains,
-      string_tension_crosses: racquet.string_tension_crosses === null ? undefined : racquet.string_tension_crosses,
-      string_date: racquet.string_date ?? null,
-      notes: racquet.notes ?? '',
-      stringing_notes: racquet.stringing_notes ?? '',
-      client_id: racquet.client_id || selectedClientId || '',
-    };
-    return JSON.stringify(racquetData);
-  };
-
-  // Show QR code for the current racquet
-  const showQRCode = () => {
-    if (!editableRacquet) return;
-    
-    const qrData = generateQRData(editableRacquet);
-    
-    // In a real app, you would show a modal with the QR code
-    // For now, we'll just show an alert with the data
-    Alert.alert(
-      'Racquet QR Code',
-      'Scan this QR code to quickly load this racquet\n\n' +
-      `Brand: ${editableRacquet.brand}\n` +
-      `Model: ${editableRacquet.model}\n` +
-      `String Pattern: ${editableRacquet.string_pattern || 'N/A'}`,
-      [
-        {
-          text: 'OK',
-          style: 'default',
-        },
-      ]
-    );
-  };
-  const [newClientId, setNewClientId] = useState<string | null>(null);
-  const [newRacquetId, setNewRacquetId] = useState<string | null>(null);
-
-  // Add state for racquet brands, models, and string inventory
-  const [racquetBrands, setRacquetBrands] = useState<{ id: string; name: string }[]>([]);
-  const [racquetModels, setRacquetModels] = useState<{ id: string; name: string; brand_id: string }[]>([]);
-  const [stringInventory, setStringInventory] = useState<any[]>([]); // Adjust type as needed
-
-  // Fetch racquet brands
-  useEffect(() => {
-    const fetchRacquetBrands = async () => {
-      const { data, error } = await supabase.from('brands').select('id, name').order('name');
-      if (!error && data) setRacquetBrands(data.map((b: any) => ({ id: b.id.toString(), name: b.name })));
-    };
-    fetchRacquetBrands();
-  }, []);
-
-  // Fetch racquet models
-  useEffect(() => {
-    const fetchRacquetModels = async () => {
-      const { data, error } = await supabase.from('models').select('id, name, brand_id').order('name');
-      if (!error && data) setRacquetModels(data.map((m: any) => ({ id: m.id.toString(), name: m.name, brand_id: m.brand_id.toString() })));
-    };
-    fetchRacquetModels();
-  }, []);
-
-  // Fetch string inventory
-  useEffect(() => {
-    const fetchStringInventory = async () => {
-      const { data, error } = await supabase.from('string_inventory').select('*');
-      if (!error && data) setStringInventory(data);
-    };
-    fetchStringInventory();
-  }, []);
+  // Debug log for editableRacquet
+  React.useEffect(() => { console.log('editableRacquet:', editableRacquet); }, [editableRacquet]);
 
   return (
     <View style={{ flex: 1 }}>
@@ -1261,69 +961,60 @@ export default function NewJobScreen() {
       <View style={{ flex: 1 }}>
         {segment === 'createJob' && (
           <ScrollView contentContainerStyle={{ paddingBottom: UI_KIT.spacing.xl }}>
-            <Button
-              title="Scan QR Code"
-              onPress={() => setQrModalVisible(true)}
-              icon="qr-code"
-              style={{ alignSelf: 'center', marginVertical: 12 }}
-            />
-            <JobForm
-              initialData={{}}
-              onSubmit={handleSubmit}
-              isLoading={isLoading}
-              submitButtonText="Create Job"
-              clients={clients}
-              racquets={clientRacquets.map(r => {
-                // Always use IDs for logic, names for display, and preserve all valid data
-                let brand_id: string = r.brand_id && r.brand_id !== '' ? r.brand_id : (racquetBrands.find(b => b.name === r.brand)?.id?.toString() || '');
-                let model_id: string = r.model_id && r.model_id !== '' ? r.model_id : (racquetModels.find(m => m.name === r.model && m.brand_id === brand_id)?.id?.toString() || '');
-                let brand = brand_id ? racquetBrands.find(b => b.id.toString() === brand_id) : undefined;
-                let model = model_id ? racquetModels.find(m => m.id.toString() === model_id) : undefined;
-                return {
-                  ...r,
-                  brand_id,
-                  brand: r.brand || brand?.name || '',
-                  model_id,
-                  model: r.model || model?.name || '',
-                  string_mains: r.string_mains ?? '',
-                  string_crosses: r.string_crosses ?? '',
-                  string_tension_mains: r.string_tension_mains === null ? undefined : r.string_tension_mains,
-                  string_tension_crosses: r.string_tension_crosses === null ? undefined : r.string_tension_crosses,
-                  head_size: r.head_size === null ? undefined : r.head_size,
-                  weight_grams: r.weight_grams === null ? undefined : r.weight_grams,
-                  balance_point: r.balance_point ?? undefined,
-                  string_pattern: r.string_pattern ?? undefined,
-                  notes: r.notes ?? '',
-                  stringing_notes: r.stringing_notes ?? '',
-                };
-              })}
-              strings={stringInventory}
-              brands={racquetBrands}
-              models={racquetModels}
-              stringBrands={stringBrands.map(b => ({ string_id: b.id.toString(), string_brand: b.name }))}
-              stringModels={stringModels.filter((m): m is { id: number; name: string; brand?: { id: number; name: string } } => m !== null).map(m => ({ model_id: m.id.toString(), model: m.name, brand_id: m.brand?.id?.toString?.() || '' }))}
-              onAddClient={() => setSegment('addClient')}
-              onAddRacquet={() => setSegment('addRacquet')}
-              onAddString={() => {}}
-              selectedClientId={selectedClientId}
-              selectedRacquetId={selectedRacquetId}
-            />
-            <Modal
-              visible={qrModalVisible}
-              animationType="slide"
-              onRequestClose={() => setQrModalVisible(false)}
-              transparent
-            >
-              <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center' }}>
-                <CameraView
-                  style={{ width: 250, height: 250, borderRadius: 16 }}
-                  facing="back"
-                  onBarcodeScanned={handleBarCodeScanned}
-                  barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-                />
-                <Button title="Close" onPress={() => setQrModalVisible(false)} style={{ marginTop: 16 }} />
+            {/* Client selection dropdown */}
+            <View style={{ margin: 12 }}>
+              <Text style={{ fontWeight: 'bold', marginBottom: 4 }}>Select Client</Text>
+              <SearchableDropdown
+                label="Client"
+                items={clients.map(c => ({ id: c.id, label: c.full_name }))}
+                value={selectedClientId}
+                onChange={handleClientSelect}
+                searchFields={['label']}
+                placeholder="Select a client..."
+              />
+            </View>
+            {/* Racquet selection list */}
+            {selectedClientId && clientRacquets.length > 0 && (
+              <View style={{ margin: 12 }}>
+                <Text style={{ fontWeight: 'bold', marginBottom: 4 }}>Select Racquet</Text>
+                {clientRacquets.map(racquet => (
+                  <TouchableOpacity
+                    key={racquet.id}
+                    style={{
+                      padding: 12,
+                      marginBottom: 8,
+                      borderRadius: 8,
+                      backgroundColor: racquet.id === selectedRacquetId ? '#e0f7fa' : '#fff',
+                      borderWidth: 1,
+                      borderColor: racquet.id === selectedRacquetId ? '#007AFF' : '#ddd',
+                    }}
+                    onPress={() => handleRacquetSelect(racquet)}
+                  >
+                    <Text style={{ fontWeight: 'bold' }}>{racquet.brand} {racquet.model}</Text>
+                    <Text style={{ color: '#666' }}>{racquet.string_pattern || ''}</Text>
+                  </TouchableOpacity>
+                ))}
               </View>
-            </Modal>
+            )}
+            {/* Racquet details display */}
+            {editableRacquet && (
+              <View style={{ margin: 12, padding: 16, borderRadius: 8, backgroundColor: '#f8f8f8', borderWidth: 1, borderColor: '#eee' }}>
+                <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 8 }}>Racquet Details</Text>
+                <Text>Brand: {editableRacquet.brand}</Text>
+                <Text>Model: {editableRacquet.model}</Text>
+                <Text>Head Size: {editableRacquet.head_size ?? ''}</Text>
+                <Text>Weight (g): {editableRacquet.weight_grams ?? ''}</Text>
+                <Text>Balance Point: {editableRacquet.balance_point ?? ''}</Text>
+                <Text>String Pattern: {editableRacquet.string_pattern ?? ''}</Text>
+                <Text>Notes: {editableRacquet.notes ?? ''}</Text>
+                <Text style={{ fontWeight: 'bold', marginTop: 12 }}>Stringing Details</Text>
+                <Text>Main String: {editableRacquet.string_mains ?? ''}</Text>
+                <Text>Main Tension: {editableRacquet.string_tension_mains ?? ''}</Text>
+                <Text>Cross String: {editableRacquet.string_crosses ?? ''}</Text>
+                <Text>Cross Tension: {editableRacquet.string_tension_crosses ?? ''}</Text>
+                <Text>Stringing Notes: {editableRacquet.stringing_notes ?? ''}</Text>
+              </View>
+            )}
           </ScrollView>
         )}
         {segment === 'addClient' && (
@@ -1332,7 +1023,6 @@ export default function NewJobScreen() {
               <UIText variant="h4" style={{ marginBottom: UI_KIT.spacing.md }}>Add Client</UIText>
               <ClientForm
                 onClientCreated={(clientId) => {
-                  setNewClientId(clientId);
                   // Do NOT switch to Add Racquet after creation
                   // Optionally show a success message or reset form
                 }}
@@ -1345,10 +1035,10 @@ export default function NewJobScreen() {
             <Card variant="base" style={{ margin: UI_KIT.spacing.md, flex: 1 }}>
               <UIText variant="h4" style={{ marginBottom: UI_KIT.spacing.md }}>Add Racquet</UIText>
               <RacquetForm
-                preselectedClientId={newClientId || undefined}
+                preselectedClientId={selectedClientId || undefined}
                 onRacquetCreated={(racquetId, clientId) => {
-                  setNewRacquetId(racquetId);
-                  setNewClientId(clientId);
+                  setSelectedRacquetId(racquetId);
+                  setSelectedClientId(clientId);
                   // Optionally, you can auto-select the racquet/client in the main job form here
                 }}
               />

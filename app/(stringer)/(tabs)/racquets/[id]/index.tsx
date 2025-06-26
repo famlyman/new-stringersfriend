@@ -38,12 +38,20 @@ export default function RacquetDetailScreen() {
   const insets = useSafeAreaInsets();
   const [racquet, setRacquet] = useState<RacquetDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [qrData, setQrData] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
       fetchRacquet(id);
     }
   }, [id]);
+
+  useEffect(() => {
+    if (racquet) {
+      generateLiveQRData(racquet);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [racquet]);
 
   const fetchRacquet = async (racquetId: string) => {
     setLoading(true);
@@ -95,6 +103,64 @@ export default function RacquetDetailScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Generate live QR code data for the racquet
+  const generateLiveQRData = async (racquet: RacquetDetail) => {
+    // Fetch the most recent job for this racquet
+    let stringingDetails = null;
+    try {
+      const { data: job, error: jobError } = await supabase
+        .from('jobs')
+        .select('id')
+        .eq('racquet_id', racquet.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      if (!jobError && job && job.id) {
+        const { data: details, error: detailsError } = await supabase
+          .from('job_stringing_details')
+          .select('*')
+          .eq('job_id', job.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        if (!detailsError && details) {
+          stringingDetails = {
+            job_id: details.job_id,
+            main_string_model_id: details.main_string_model_id,
+            cross_string_model_id: details.cross_string_model_id,
+            tension_main: details.tension_main,
+            tension_cross: details.tension_cross,
+            price: details.price,
+            created_at: details.created_at,
+          };
+        }
+      }
+    } catch (err) {
+      stringingDetails = null;
+    }
+    const qrPayload = {
+      id: racquet.id,
+      brand: racquet.brand?.name || '',
+      brand_id: '',
+      model: racquet.model?.name || '',
+      model_id: '',
+      head_size: racquet.head_size,
+      weight_grams: racquet.weight_grams,
+      balance_point: racquet.balance_point,
+      string_pattern: racquet.string_pattern,
+      string_mains: '', // fill if you have
+      string_crosses: '', // fill if you have
+      string_tension_mains: null,
+      string_tension_crosses: null,
+      string_date: racquet.last_stringing_date,
+      notes: racquet.notes,
+      stringing_notes: racquet.stringing_notes,
+      client_id: racquet.user_id || '',
+      stringing_details: stringingDetails,
+    };
+    setQrData(JSON.stringify(qrPayload));
   };
 
   if (loading) {
@@ -222,12 +288,13 @@ export default function RacquetDetailScreen() {
             <UIText variant="body" style={{ fontSize: 15 }}>{racquet.notes}</UIText>
           </Card>
         )}
-        {racquet?.qr_code_data && (
+        {/* QR Code Card (live) */}
+        {qrData && (
           <Card style={styles.card}>
-            <UIText style={styles.sectionTitle}>Racquet QR Code</UIText>
+            <UIText style={styles.sectionTitle}>Racquet QR Code (Live)</UIText>
             <View style={styles.qrContainer}>
               <QRCode
-                value={typeof racquet.qr_code_data === 'string' ? racquet.qr_code_data : JSON.stringify(racquet.qr_code_data)}
+                value={qrData}
                 size={150}
                 backgroundColor={UI_KIT.colors.white}
                 color={UI_KIT.colors.text}

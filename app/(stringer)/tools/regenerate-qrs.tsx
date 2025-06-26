@@ -13,6 +13,7 @@ export default function RegenerateRacquetQRCodes() {
   const [brands, setBrands] = useState<any[]>([]);
   const [models, setModels] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [qrDataMap, setQrDataMap] = useState<{ [racquetId: string]: string }>({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -28,10 +29,58 @@ export default function RegenerateRacquetQRCodes() {
     fetchData();
   }, []);
 
-  // Generates the new QR code data structure for a racquet
-  const generateQRData = (racquet: any) => {
+  useEffect(() => {
+    // When racquets, brands, or models change, regenerate all QR data
+    const generateAllQRData = async () => {
+      const newQrDataMap: { [racquetId: string]: string } = {};
+      for (const racquet of racquets) {
+        newQrDataMap[racquet.id] = await generateQRData(racquet);
+      }
+      setQrDataMap(newQrDataMap);
+    };
+    if (racquets.length && brands.length && models.length) {
+      generateAllQRData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [racquets, brands, models]);
+
+  // Generates the new QR code data structure for a racquet, including latest stringing details
+  const generateQRData = async (racquet: any) => {
     const brand = brands.find(b => b.id === racquet.brand_id);
     const model = models.find(m => m.id === racquet.model_id);
+    // Fetch the most recent job for this racquet
+    let stringingDetails = null;
+    try {
+      const { data: job, error: jobError } = await supabase
+        .from('jobs')
+        .select('id')
+        .eq('racquet_id', racquet.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      if (!jobError && job && job.id) {
+        const { data: details, error: detailsError } = await supabase
+          .from('job_stringing_details')
+          .select('*')
+          .eq('job_id', job.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        if (!detailsError && details) {
+          stringingDetails = {
+            job_id: details.job_id,
+            main_string_model_id: details.main_string_model_id,
+            cross_string_model_id: details.cross_string_model_id,
+            tension_main: details.tension_main,
+            tension_cross: details.tension_cross,
+            price: details.price,
+            created_at: details.created_at,
+          };
+        }
+      }
+    } catch (err) {
+      stringingDetails = null;
+    }
     return JSON.stringify({
       id: racquet.id,
       brand: brand?.name || '',
@@ -50,6 +99,7 @@ export default function RegenerateRacquetQRCodes() {
       notes: racquet.notes,
       stringing_notes: racquet.stringing_notes,
       client_id: racquet.client_id,
+      stringing_details: stringingDetails,
     });
   };
 
@@ -68,7 +118,7 @@ export default function RegenerateRacquetQRCodes() {
         <View key={racquet.id} style={{ margin: 16, alignItems: 'center' }}>
           <Text selectable style={{ fontWeight: 'bold', marginBottom: 4 }}>{racquet.id}</Text>
           <Text>{brands.find(b => b.id === racquet.brand_id)?.name || ''} - {models.find(m => m.id === racquet.model_id)?.name || ''}</Text>
-          <QRCode value={generateQRData(racquet)} size={200} />
+          <QRCode value={qrDataMap[racquet.id] || ''} size={200} />
         </View>
       ))}
     </ScrollView>
