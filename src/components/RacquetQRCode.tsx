@@ -26,14 +26,25 @@ export const RacquetQRCode: React.FC<RacquetQRCodeProps> = ({
 }) => {
   if (!visible || !racquetData) return null;
 
-  // Generate QR data string
+  // Generate QR data string (updated to match new logic)
   const qrData = JSON.stringify({
-    type: 'racquet',
     id: racquetData.id,
     brand: racquetData.brand,
+    brand_id: racquetData.brand_id,
     model: racquetData.model,
-    clientName: racquetData.clientName,
-    timestamp: new Date().toISOString(),
+    model_id: racquetData.model_id,
+    head_size: racquetData.head_size ?? null,
+    weight_grams: racquetData.weight_grams ?? null,
+    balance_point: racquetData.balance_point ?? null,
+    string_pattern: racquetData.string_pattern ?? null,
+    string_mains: racquetData.string_mains ?? '',
+    string_crosses: racquetData.string_crosses ?? '',
+    string_tension_mains: racquetData.string_tension_mains ?? null,
+    string_tension_crosses: racquetData.string_tension_crosses ?? null,
+    string_date: racquetData.string_date ?? null,
+    notes: racquetData.notes ?? '',
+    stringing_notes: racquetData.stringing_notes ?? '',
+    client_id: racquetData.client_id,
   });
 
   const [qrSvg, setQrSvg] = useState<string>('');

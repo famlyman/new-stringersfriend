@@ -36,7 +36,7 @@ export interface Job {
 
 export interface JobFormData {
   client_id: string;
-  racquet_id?: string;
+  racquet_id: string;
   racquet_brand_id: string;
   string_id: string;
   cross_string_id?: string;  // Made optional with '?'

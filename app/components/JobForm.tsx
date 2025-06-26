@@ -31,6 +31,8 @@ interface JobFormProps {
   models: { id: string; name: string; brand_id: string }[];
   stringBrands: { string_id: string; string_brand: string }[];
   stringModels: { model_id: string; model: string; brand_id: string }[];
+  selectedClientId?: string;
+  selectedRacquetId?: string;
 }
 
 export default function JobForm({
@@ -47,7 +49,9 @@ export default function JobForm({
   brands,
   models,
   stringBrands,
-  stringModels
+  stringModels,
+  selectedClientId,
+  selectedRacquetId
 }: JobFormProps) {
   const [formData, setFormData] = useState<JobFormData>({
     client_id: initialData.client_id || '',
@@ -68,6 +72,18 @@ export default function JobForm({
   const [selectedCrossStringBrandId, setSelectedCrossStringBrandId] = useState<string>('');
   const [filteredCrossStringModels, setFilteredCrossStringModels] = useState<{ id: string; label: string }[]>([]);
   const [selectedModelId, setSelectedModelId] = useState<string>('');
+
+  useEffect(() => {
+    if (selectedClientId && selectedClientId !== formData.client_id) {
+      setFormData(prev => ({ ...prev, client_id: selectedClientId }));
+    }
+  }, [selectedClientId]);
+
+  useEffect(() => {
+    if (selectedRacquetId && selectedRacquetId !== formData.racquet_id) {
+      setFormData(prev => ({ ...prev, racquet_id: selectedRacquetId }));
+    }
+  }, [selectedRacquetId]);
 
   useEffect(() => {
     if (selectedBrandId) {
@@ -109,6 +125,16 @@ export default function JobForm({
       setSelectedModelId(racquet.model_id);
     } else {
       setSelectedModelId('');
+    }
+  }, [formData.racquet_id, racquets]);
+
+  // DEBUG: Log racquet dropdown value and items
+  useEffect(() => {
+    if (racquets && racquets.length > 0) {
+      console.log('JobForm racquet_id value:', formData.racquet_id);
+      console.log('JobForm racquet items:', racquets.map(r => r.id));
+      const selectedRacquet = racquets.find(r => r.id === formData.racquet_id);
+      console.log('JobForm selected racquet:', selectedRacquet);
     }
   }, [formData.racquet_id, racquets]);
 
