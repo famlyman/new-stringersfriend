@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "StringersFriend",
-    "slug": "stringersfriend",
+    "slug": "stringers-friend",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "stringersfriend",
@@ -33,6 +33,12 @@
     "web": {
       "favicon": "./assets/images/favicon.png"
     },
-    "jsEngine": "jsc"
+    "jsEngine": "jsc",
+    "extra": {
+      "eas": {
+        "projectId": "377f52d9-10f0-40c8-aecb-608cd50bd5b5"
+      }
+    },
+    "owner": "famlyman"
   }
 }

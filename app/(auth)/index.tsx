@@ -119,6 +119,7 @@ export default function WelcomeScreen() {
           </Card>
           <Card variant="outlined" style={{ borderColor: UI_KIT.colors.gray, marginBottom: SPACING.md }}>
             <Text variant="h4" style={{ color: UI_KIT.colors.navy, marginBottom: SPACING.sm }}>For Customers</Text>
+            {/*
             <Text variant="body" style={{ color: UI_KIT.colors.text, marginBottom: SPACING.md }}>
               • Find local stringers{"\n"}
               • Track your racquets{"\n"}
@@ -134,6 +135,10 @@ export default function WelcomeScreen() {
               style={{ marginTop: SPACING.sm }}
               loading={selectingRole}
             />
+            */}
+            <Text variant="body" style={{ color: UI_KIT.colors.text, marginBottom: SPACING.md, textAlign: 'center' }}>
+              Coming soon!
+            </Text>
           </Card>
         </View>
         <View style={{ marginTop: SPACING.xl, alignItems: 'center' }}>
