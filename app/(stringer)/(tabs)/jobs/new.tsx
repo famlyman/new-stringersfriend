@@ -17,6 +17,7 @@ import RacquetForm from '../../../../src/components/RacquetForm';
 import JobForm from '../../../components/JobForm';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Racquet } from '../../../../src/types/racquet';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 
 // --- UPDATED TYPES ---
 
@@ -871,6 +872,19 @@ export default function NewJobScreen() {
             }
             setIsLoading(true);
             try {
+              // Update racquet details first
+              const { error: racquetUpdateError } = await supabase
+                .from('racquets')
+                .update({
+                  head_size: editableRacquet.head_size ?? null,
+                  weight_grams: editableRacquet.weight_grams ?? null,
+                  balance_point: editableRacquet.balance_point ?? null,
+                  string_pattern: editableRacquet.string_pattern ?? null,
+                  notes: editableRacquet.notes ?? null,
+                  stringing_notes: editableRacquet.stringing_notes ?? null,
+                })
+                .eq('id', selectedRacquetId);
+              if (racquetUpdateError) throw racquetUpdateError;
               // Insert job
               const { data: jobData, error: jobError } = await supabase
                 .from('jobs')
@@ -906,7 +920,7 @@ export default function NewJobScreen() {
             }
           }}
           loading={isLoading}
-          style={{ margin: 12, marginTop: 16 }}
+          style={{ margin: UI_KIT.spacing.md, marginTop: UI_KIT.spacing.lg, borderRadius: 16 }}
           disabled={!editableRacquet}
         />
       </View>
@@ -914,7 +928,62 @@ export default function NewJobScreen() {
   };
 
   const insets = useSafeAreaInsets();
-  const [segment, setSegment] = useState<'createJob' | 'addClient' | 'addRacquet'>('createJob');
+  const [segment, setSegment] = useState<'createJob' | 'addClient' | 'addRacquet' | 'scanQR'>('createJob');
+  const [qrModalVisible, setQrModalVisible] = useState(false);
+  const [qrScanError, setQrScanError] = useState<string | null>(null);
+  const [scannedQrData, setScannedQrData] = useState<any>(null);
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+
+  // Handler for QR code scanning
+  const handleBarCodeScanned = (result: { data: string }) => {
+    setQrModalVisible(false);
+    setQrScanError(null);
+    try {
+      const parsed = JSON.parse(result.data);
+      setScannedQrData(parsed);
+      // Set main/cross string brand/model dropdowns if present in QR
+      let mainModelId: number | null = null;
+      let mainBrandId: number | null = null;
+      let crossModelId: number | null = null;
+      let crossBrandId: number | null = null;
+      // Try to get model IDs from QR
+      if (parsed.stringing_details?.main_string_model_id) {
+        mainModelId = parsed.stringing_details.main_string_model_id;
+        const mainModel = stringModels.find(m => m && m.id === mainModelId) || null;
+        if (mainModel && mainModel.brand) mainBrandId = mainModel.brand.id;
+      }
+      if (parsed.stringing_details?.cross_string_model_id) {
+        crossModelId = parsed.stringing_details.cross_string_model_id;
+        const crossModel = stringModels.find(m => m && m.id === crossModelId) || null;
+        if (crossModel && crossModel.brand) crossBrandId = crossModel.brand.id;
+      }
+      setSelectedMainBrandId(mainBrandId);
+      setSelectedMainModelId(mainModelId);
+      setSelectedCrossBrandId(crossBrandId);
+      setSelectedCrossModelId(crossModelId);
+      const mainModel = mainModelId ? stringModels.find(m => m && m.id === mainModelId) || null : null;
+      const crossModel = crossModelId ? stringModels.find(m => m && m.id === crossModelId) || null : null;
+      // Populate racquet details as if selected
+      setEditableRacquet({
+        id: parsed.id || '',
+        brand: parsed.brand || '',
+        model: parsed.model || '',
+        head_size: parsed.head_size ?? null,
+        weight_grams: parsed.weight_grams ?? null,
+        balance_point: parsed.balance_point ?? null,
+        string_pattern: parsed.string_pattern ?? '',
+        stringing_notes: parsed.stringing_notes ?? '',
+        notes: parsed.notes ?? '',
+        string_tension_mains: parsed.stringing_details?.tension_main ?? null,
+        string_tension_crosses: parsed.stringing_details?.tension_cross ?? null,
+        string_mains: mainModel ? mainModel.name : '',
+        string_crosses: crossModel ? crossModel.name : '',
+      });
+      setSegment('createJob'); // Switch to Create Job segment to show racquet details
+    } catch (e) {
+      setQrScanError('Failed to parse QR code');
+    }
+  };
 
   // Debug log for editableRacquet
   React.useEffect(() => { console.log('editableRacquet:', editableRacquet); }, [editableRacquet]);
@@ -953,12 +1022,28 @@ export default function NewJobScreen() {
             textStyle={styles.segmentedButtonText}
             size="small"
           />
+          <Button
+            title="Scan QR"
+            variant={segment === 'scanQR' ? 'primary' : 'outline'}
+            onPress={() => setSegment('scanQR')}
+            style={styles.segmentedButton}
+            textStyle={styles.segmentedButtonText}
+            size="small"
+          />
         </RNScrollView>
       </View>
       {/* Main Content Area */}
       <View style={{ flex: 1 }}>
         {segment === 'createJob' && (
-          <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: UI_KIT.spacing.xl }}>
+          <KeyboardAwareScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{
+              flexGrow: 1,
+              paddingBottom: UI_KIT.spacing.xl + insets.bottom + 24, // Add extra space for safe area and visibility
+            }}
+            enableOnAndroid={true}
+            extraScrollHeight={24}
+          >
             {/* Client selection dropdown */}
             <View style={{ margin: 12 }}>
               <Text style={{ fontWeight: 'bold', marginBottom: 4 }}>Select Client</Text>
@@ -995,25 +1080,8 @@ export default function NewJobScreen() {
               </View>
             )}
             {/* Racquet details display */}
-            {editableRacquet && (
-              <View style={{ margin: 12, padding: 16, borderRadius: 8, backgroundColor: '#f8f8f8', borderWidth: 1, borderColor: '#eee' }}>
-                <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 8 }}>Racquet Details</Text>
-                <Text>Brand: {editableRacquet.brand}</Text>
-                <Text>Model: {editableRacquet.model}</Text>
-                <Text>Head Size: {editableRacquet.head_size ?? ''}</Text>
-                <Text>Weight (g): {editableRacquet.weight_grams ?? ''}</Text>
-                <Text>Balance Point: {editableRacquet.balance_point ?? ''}</Text>
-                <Text>String Pattern: {editableRacquet.string_pattern ?? ''}</Text>
-                <Text>Notes: {editableRacquet.notes ?? ''}</Text>
-                <Text style={{ fontWeight: 'bold', marginTop: 12 }}>Stringing Details</Text>
-                <Text>Main String: {editableRacquet.string_mains ?? ''}</Text>
-                <Text>Main Tension: {editableRacquet.string_tension_mains ?? ''}</Text>
-                <Text>Cross String: {editableRacquet.string_crosses ?? ''}</Text>
-                <Text>Cross Tension: {editableRacquet.string_tension_crosses ?? ''}</Text>
-                <Text>Stringing Notes: {editableRacquet.stringing_notes ?? ''}</Text>
-              </View>
-            )}
-          </ScrollView>
+            {editableRacquet && renderRacquetDetails()}
+          </KeyboardAwareScrollView>
         )}
         {segment === 'addClient' && (
           <ScrollView contentContainerStyle={{ paddingBottom: UI_KIT.spacing.xl }}>
@@ -1042,6 +1110,73 @@ export default function NewJobScreen() {
               />
             </Card>
           </ScrollView>
+        )}
+        {segment === 'scanQR' && (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 16 }}>Scan Racquet QR Code</Text>
+            {Platform.OS === 'web' ? (
+              <View style={{ padding: 24, alignItems: 'center' }}>
+                <Text style={{ color: '#007AFF', fontWeight: 'bold', fontSize: 16, marginBottom: 12 }}>
+                  QR code scanning is only available on mobile devices.
+                </Text>
+                <Text style={{ color: '#666', textAlign: 'center' }}>
+                  Please use the mobile app to scan racquet QR codes.
+                </Text>
+              </View>
+            ) : (
+              <>
+                <Button
+                  title="Open QR Scanner"
+                  onPress={async () => {
+                    if (!cameraPermission?.granted) {
+                      await requestCameraPermission();
+                    }
+                    setQrModalVisible(true);
+                  }}
+                  style={{ marginBottom: 24 }}
+                />
+                <Modal visible={qrModalVisible} animationType="slide" onRequestClose={() => setQrModalVisible(false)} transparent>
+                  <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center' }}>
+                    <CameraView
+                      style={{ width: 250, height: 250, borderRadius: 16, marginBottom: 16 }}
+                      facing="back"
+                      onBarcodeScanned={handleBarCodeScanned}
+                      barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+                    />
+                    <Button title="Close" onPress={() => setQrModalVisible(false)} />
+                  </View>
+                </Modal>
+                {qrScanError && <Text style={{ color: 'red', marginTop: 12 }}>{qrScanError}</Text>}
+                <Text style={{ marginTop: 24, color: '#666', textAlign: 'center', maxWidth: 300 }}>
+                  Align the racquet QR code within the viewfinder to scan and auto-fill racquet details.
+                </Text>
+                {/* After scan, show client selection/creation options */}
+                {scannedQrData && (
+                  <View style={{ marginTop: 32, width: '100%', alignItems: 'center' }}>
+                    <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 8 }}>Racquet Details Scanned!</Text>
+                    {/* You can show a summary or allow client selection/add here */}
+                    <Text style={{ color: '#333', marginBottom: 8 }}>Assign to an existing client or add a new client below.</Text>
+                    {/* Existing client dropdown */}
+                    <SearchableDropdown
+                      label="Client"
+                      items={clients.map(c => ({ id: c.id, label: c.full_name }))}
+                      value={selectedClientId}
+                      onChange={handleClientSelect}
+                      searchFields={['label']}
+                      placeholder="Select a client..."
+                    />
+                    <Text style={{ marginVertical: 8, color: '#888' }}>or</Text>
+                    {/* Add new client form */}
+                    <ClientForm
+                      onClientCreated={(clientId) => {
+                        setSelectedClientId(clientId);
+                      }}
+                    />
+                  </View>
+                )}
+              </>
+            )}
+          </View>
         )}
       </View>
     </View>

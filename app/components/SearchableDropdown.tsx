@@ -85,41 +85,49 @@ export default function SearchableDropdown({
         />
       </TouchableOpacity>
 
-      {isOpen && (
-        <View style={styles.dropdownList}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          <ScrollView style={styles.scrollView}>
-            {filteredItems.map(item => (
-              <TouchableOpacity
-                key={item.id}
-                style={[
-                  styles.dropdownItem,
-                  value === item.id && styles.selectedItem
-                ]}
-                onPress={() => {
-                  onChange(item.id);
-                  setIsOpen(false);
-                  setSearchQuery('');
-                }}
-              >
-                <View style={styles.dropdownItemContent}>
-                  <Text style={[
-                    styles.dropdownItemText,
-                    value === item.id && styles.selectedItemText
-                  ]}>
-                    {item.label}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      )}
+      <Modal
+        visible={isOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsOpen(false)}
+      >
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setIsOpen(false)}>
+          <View style={styles.modalContent}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoFocus
+            />
+            <ScrollView style={styles.scrollView}>
+              {filteredItems.map(item => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[
+                    styles.dropdownItem,
+                    value === item.id && styles.selectedItem
+                  ]}
+                  onPress={() => {
+                    onChange(item.id);
+                    setIsOpen(false);
+                    setSearchQuery('');
+                  }}
+                >
+                  <View style={styles.dropdownItemContent}>
+                    <Text style={[
+                      styles.dropdownItemText,
+                      value === item.id && styles.selectedItemText
+                    ]}>
+                      {item.label}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -208,5 +216,24 @@ const styles = StyleSheet.create({
   },
   dropdownItemContent: {
     flex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 8,
+    minWidth: 260,
+    maxWidth: 340,
+    maxHeight: 320,
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
   },
 }); 
