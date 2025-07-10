@@ -47,24 +47,50 @@ export default function QRDebugScreen() {
         </View>
       </Modal>
       {qrData && (
-        <View style={styles.resultBox}>
-          <Text style={styles.sectionTitle}>Racquet Fields</Text>
-          {RACQUET_FIELDS.map(field => (
-            <View key={field} style={styles.fieldRow}>
-              <Text style={styles.fieldLabel}>{field}:</Text>
-              <Text style={styles.fieldValue}>{qrData[field]?.toString() ?? ''}</Text>
-            </View>
-          ))}
-          <Text style={styles.sectionTitle}>Stringing Details</Text>
-          {STRINGING_FIELDS.map(field => (
-            <View key={field} style={styles.fieldRow}>
-              <Text style={styles.fieldLabel}>{field}:</Text>
-              <Text style={styles.fieldValue}>{getStringingDetails(qrData)[field]?.toString() ?? ''}</Text>
-            </View>
-          ))}
-          <Text style={styles.sectionTitle}>Raw JSON</Text>
-          <Text style={styles.rawJson}>{JSON.stringify(qrData, null, 2)}</Text>
-        </View>
+        <>
+          {/* Autofill Preview Card */}
+          <View style={{
+            marginTop: 24,
+            padding: 16,
+            backgroundColor: '#e6f7ff',
+            borderRadius: 8,
+            alignItems: 'center',
+          }}>
+            <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 8 }}>Racquet Details</Text>
+            <Text style={{ fontSize: 15, marginBottom: 4 }}>Brand: <Text style={{ fontWeight: '600' }}>{qrData.brand || '-'}</Text></Text>
+            <Text style={{ fontSize: 15, marginBottom: 4 }}>Model: <Text style={{ fontWeight: '600' }}>{qrData.model || '-'}</Text></Text>
+            <Text style={{ fontSize: 15, marginBottom: 4 }}>Client ID: <Text style={{ fontWeight: '600' }}>{qrData.client_id || '-'}</Text></Text>
+            {qrData.clientName && (
+              <Text style={{ fontSize: 15, marginBottom: 4 }}>Client Name: <Text style={{ fontWeight: '600' }}>{qrData.clientName}</Text></Text>
+            )}
+            {qrData.head_size && (
+              <Text style={{ fontSize: 15, marginBottom: 4 }}>Head Size: <Text style={{ fontWeight: '600' }}>{qrData.head_size}</Text></Text>
+            )}
+            {qrData.string_pattern && (
+              <Text style={{ fontSize: 15, marginBottom: 4 }}>String Pattern: <Text style={{ fontWeight: '600' }}>{qrData.string_pattern}</Text></Text>
+            )}
+            {/* Add more fields as needed */}
+          </View>
+          {/* Existing Debug Info */}
+          <View style={styles.resultBox}>
+            <Text style={styles.sectionTitle}>Racquet Fields</Text>
+            {RACQUET_FIELDS.map(field => (
+              <View key={field} style={styles.fieldRow}>
+                <Text style={styles.fieldLabel}>{field}:</Text>
+                <Text style={styles.fieldValue}>{qrData[field]?.toString() ?? ''}</Text>
+              </View>
+            ))}
+            <Text style={styles.sectionTitle}>Stringing Details</Text>
+            {STRINGING_FIELDS.map(field => (
+              <View key={field} style={styles.fieldRow}>
+                <Text style={styles.fieldLabel}>{field}:</Text>
+                <Text style={styles.fieldValue}>{getStringingDetails(qrData)[field]?.toString() ?? ''}</Text>
+              </View>
+            ))}
+            <Text style={styles.sectionTitle}>Raw JSON</Text>
+            <Text style={styles.rawJson}>{JSON.stringify(qrData, null, 2)}</Text>
+          </View>
+        </>
       )}
     </ScrollView>
   );

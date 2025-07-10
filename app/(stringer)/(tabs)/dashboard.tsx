@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { useAuth } from '../../../src/contexts/AuthContext';
 import { supabase } from '../../../src/lib/supabase';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { COLORS } from '../../../src/constants/colors';
 import { DashboardCard } from '../../../src/components/dashboard/DashboardCard';
@@ -13,6 +13,7 @@ import { SkeletonCard } from '../../../src/components/ui/SkeletonLoader';
 export default function DashboardScreen() {
   const { user } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [shopName, setShopName] = useState<string | null>(null);
@@ -98,7 +99,6 @@ export default function DashboardScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['top','left','right']}>
         <View style={styles.header}>
-          <Text style={styles.welcomeText}>Welcome back,</Text>
           <Text style={styles.userName}>{shopName || user?.user_metadata?.name || 'Stringer'}</Text>
         </View>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
@@ -112,7 +112,6 @@ export default function DashboardScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['top','left','right']}>
         <View style={styles.header}>
-          <Text style={styles.welcomeText}>Welcome back,</Text>
           <Text style={styles.userName}>{shopName || user?.user_metadata?.name || 'Stringer'}</Text>
         </View>
         <View style={styles.errorContainer}>
@@ -125,11 +124,19 @@ export default function DashboardScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top','left','right']}>
       <View style={styles.header}>
-        <Text style={styles.welcomeText}>Welcome back,</Text>
-        <Text style={styles.userName}>{shopName || user?.user_metadata?.name || 'Stringer'}</Text>
+        <Text
+          style={styles.userName}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {shopName || user?.user_metadata?.name || 'Stringer'}
+        </Text>
       </View>
       
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 80 }]}
+      >
         {/* Stats Section */}
         <DashboardStats 
           jobsCount={stats.jobsCount}
@@ -219,16 +226,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.primary,
     paddingBottom: 30,
-  },
-  welcomeText: {
-    fontSize: 16,
-    color: COLORS.gray,
+    alignItems: 'center',
   },
   userName: {
-    fontSize: 28,
+    fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.gray,
     marginTop: 4,
+    textAlign: 'center',
   },
   scrollView: {
     flex: 1,

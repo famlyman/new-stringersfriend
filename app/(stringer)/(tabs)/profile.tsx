@@ -18,6 +18,7 @@ interface ProfileFormData {
   address: string;
   businessHours: string;
   bio: string;
+  email: string;
 }
 
 export default function ProfileScreen() {
@@ -34,7 +35,8 @@ export default function ProfileScreen() {
     phone: '',
     address: '',
     businessHours: '',
-    bio: ''
+    bio: '',
+    email: session?.user?.email || '',
   });
   const [initialData, setInitialData] = useState<ProfileFormData>({
     shopName: '',
@@ -42,7 +44,8 @@ export default function ProfileScreen() {
     phone: '',
     address: '',
     businessHours: '',
-    bio: ''
+    bio: '',
+    email: session?.user?.email || '',
   });
 
   // Format phone number as (XXX) XXX-XXXX
@@ -94,7 +97,8 @@ export default function ProfileScreen() {
           phone: formatPhoneNumber(stringer?.phone_number || ''),
           address: stringer?.address || '',
           businessHours: stringer?.business_hours?.text || '',
-          bio: profile?.bio || ''
+          bio: profile?.bio || '',
+          email: session?.user?.email || '',
         };
 
         setFormData(newFormData);
@@ -114,6 +118,14 @@ export default function ProfileScreen() {
     setSaving(true);
     setError(null);
     try {
+      // Update email if changed
+      if (formData.email !== session.user.email) {
+        const { error: emailError } = await supabase.auth.updateUser({
+          email: formData.email,
+        });
+        if (emailError) throw emailError;
+        Alert.alert('Check your email', 'A confirmation link has been sent to your new email address.');
+      }
       // Update profiles table
       const { error: profileError } = await supabase
         .from('profiles')
@@ -218,7 +230,18 @@ export default function ProfileScreen() {
           
           <View style={{ marginBottom: SPACING.md }}>
             <UI_Text variant="label" style={{ marginBottom: SPACING.xs }}>Email</UI_Text>
-            <UI_Text style={styles.value}>{session?.user?.email}</UI_Text>
+            {editing ? (
+              <TextInput
+                style={UI_KIT.input.base}
+                value={formData.email}
+                onChangeText={text => setFormData(prev => ({ ...prev, email: text }))}
+                placeholder="email@example.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            ) : (
+              <UI_Text style={styles.value}>{formData.email}</UI_Text>
+            )}
           </View>
 
           {renderField('Phone', formData.phone, '(XXX) XXX-XXXX', 'phone', false, 'phone-pad', 14)}

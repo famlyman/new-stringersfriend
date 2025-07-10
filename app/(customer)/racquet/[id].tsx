@@ -45,7 +45,7 @@ export default function RacquetDetailScreen() {
           *,
           brand:brands(name),
           model:models(name),
-          client:clients(full_name)
+          client:client_id(full_name)
         `)
         .eq('id', id)
         .single();

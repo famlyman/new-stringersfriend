@@ -620,24 +620,30 @@ export default function NewJobScreen() {
 
     return (
       <View>
+        <View style={styles.racquetInfo}>
+          <View style={styles.racquetNameContainer}>
+            <Text style={styles.racquetName}>
+              {editableRacquet.brand} {editableRacquet.model}
+            </Text>
+          </View>
+        </View>
         <View style={styles.racquetDetails}>
           <View style={styles.row}>
             <View style={[styles.inputGroup, styles.halfWidth]}>
               <Text style={styles.label}>Head Size (sq in)</Text>
               <TextInput
                 style={styles.input}
-                value={editableRacquet.head_size?.toString() || ''} // Convert number to string for TextInput
+                value={editableRacquet.head_size?.toString() || ''}
                 onChangeText={(value) => handleRacquetDetailChange('head_size', value)}
                 keyboardType="numeric"
                 placeholder="e.g. 100"
               />
             </View>
-
             <View style={[styles.inputGroup, styles.halfWidth]}>
               <Text style={styles.label}>Weight (g)</Text>
               <TextInput
                 style={styles.input}
-                value={editableRacquet.weight_grams?.toString() || ''} // Use weight_grams, convert number to string
+                value={editableRacquet.weight_grams?.toString() || ''}
                 onChangeText={(value) => handleRacquetDetailChange('weight_grams', value)}
                 keyboardType="numeric"
                 placeholder="e.g. 300"
@@ -645,85 +651,74 @@ export default function NewJobScreen() {
             </View>
           </View>
           <View style={styles.row}>
-            {/* Racquet Info Section */}
-            {editableRacquet && (
-              <View style={styles.racquetInfo}>
-                <View style={styles.racquetNameContainer}>
-                  <Text style={styles.racquetName}>
-                    {editableRacquet.brand} {editableRacquet.model}
-                  </Text>
-                </View>
+            {/* Main String Selection */}
+            <View style={styles.row}>
+              {/* Main String Brand Dropdown */}
+              <View style={[styles.inputGroup, styles.halfWidth]}>
+                <Text style={styles.label}>Main String Brand</Text>
+                <SearchableDropdown
+                  label="Select Brand"
+                  items={stringBrands.map(brand => ({
+                    id: brand.id.toString(),
+                    label: brand.name,
+                    value: brand.id.toString(),
+                  }))}
+                  value={selectedMainBrandId?.toString() || ''}
+                  onChange={value => {
+                    setSelectedMainBrandId(Number(value));
+                    setSelectedMainModelId(null);
+                    handleRacquetDetailChange('string_mains', ''); // Clear model name when brand changes
+                  }}
+                  searchFields={['label']}
+                  placeholder="Select brand..."
+                />
               </View>
-            )}
-          </View>
 
-          {/* Main String Selection */}
-          <View style={styles.row}>
-            {/* Main String Brand Dropdown */}
-            <View style={[styles.inputGroup, styles.halfWidth]}>
-              <Text style={styles.label}>Main String Brand</Text>
-              <SearchableDropdown
-                label="Select Brand"
-                items={stringBrands.map(brand => ({
-                  id: brand.id.toString(),
-                  label: brand.name,
-                  value: brand.id.toString(),
-                }))}
-                value={selectedMainBrandId?.toString() || ''}
-                onChange={value => {
-                  setSelectedMainBrandId(Number(value));
-                  setSelectedMainModelId(null);
-                  handleRacquetDetailChange('string_mains', ''); // Clear model name when brand changes
-                }}
-                searchFields={['label']}
-                placeholder="Select brand..."
-              />
-            </View>
-
-            {/* Main String Model Dropdown */}
-            <View style={[styles.inputGroup, styles.halfWidth]}>
-              <Text style={styles.label}>Main String Model</Text>
-              <SearchableDropdown
-                label="Select Model"
-                items={
-                  selectedMainBrandId
-                    ? stringModels
-                        .filter(model => model?.brand?.id === selectedMainBrandId)
-                        .map(model => ({
-                          id: model?.id?.toString() || '',
-                          label: model?.name || '', // Just use the model name
-                          value: model?.id?.toString() || '',
-                        }))
-                    : []
-                }
-                value={selectedMainModelId?.toString() || ''}
-                onChange={value => {
-                  const model = stringModels.find(m => m?.id?.toString() === value);
-                  if (model) {
-                    setSelectedMainModelId(model.id);
-                    // Combine brand and model names for display
-                    const brandName = stringBrands.find(b => b.id === model.brand?.id)?.name || '';
-                    handleRacquetDetailChange('string_mains', `${brandName} ${model.name}`);
+              {/* Main String Model Dropdown */}
+              <View style={[styles.inputGroup, styles.halfWidth]}>
+                <Text style={styles.label}>Main String Model</Text>
+                <SearchableDropdown
+                  label="Select Model"
+                  items={
+                    selectedMainBrandId
+                      ? stringModels
+                          .filter(model => model?.brand?.id === selectedMainBrandId)
+                          .map(model => ({
+                            id: model?.id?.toString() || '',
+                            label: model?.name || '', // Just use the model name
+                            value: model?.id?.toString() || '',
+                          }))
+                      : []
                   }
-                }}
-                searchFields={['label']}
-                placeholder="Select model..."
-                disabled={!selectedMainBrandId}
-              />
+                  value={selectedMainModelId?.toString() || ''}
+                  onChange={value => {
+                    const model = stringModels.find(m => m?.id?.toString() === value);
+                    if (model) {
+                      setSelectedMainModelId(model.id);
+                      // Combine brand and model names for display
+                      const brandName = stringBrands.find(b => b.id === model.brand?.id)?.name || '';
+                      handleRacquetDetailChange('string_mains', `${brandName} ${model.name}`);
+                    }
+                  }}
+                  searchFields={['label']}
+                  placeholder="Select model..."
+                  disabled={!selectedMainBrandId}
+                />
+              </View>
             </View>
-          </View>
 
-          {/* Main Tension */}
-          <View style={styles.row}>
-            <View style={[styles.inputGroup, styles.halfWidth]}>
-              <Text style={styles.label}>Mains Tension (lbs)</Text>
-              <TextInput
-                style={styles.input}
-                keyboardType="numeric"
-                value={editableRacquet?.string_tension_mains?.toString() || (selectedClient?.default_tension_main?.toString() || '')}
-                onChangeText={value => handleRacquetDetailChange('string_tension_mains', Number(value))}
-                placeholder="Mains Tension"
-              />
+            {/* Main Tension */}
+            <View style={styles.row}>
+              <View style={[styles.inputGroup, styles.halfWidth]}>
+                <Text style={styles.label}>Mains Tension (lbs)</Text>
+                <TextInput
+                  style={styles.input}
+                  keyboardType="numeric"
+                  value={editableRacquet?.string_tension_mains?.toString() || (selectedClient?.default_tension_main?.toString() || '')}
+                  onChangeText={value => handleRacquetDetailChange('string_tension_mains', Number(value))}
+                  placeholder="Mains Tension"
+                />
+              </View>
             </View>
           </View>
 
@@ -979,7 +974,9 @@ export default function NewJobScreen() {
         string_mains: mainModel ? mainModel.name : '',
         string_crosses: crossModel ? crossModel.name : '',
       });
-      setSegment('createJob'); // Switch to Create Job segment to show racquet details
+      // Autofill client and racquet selection for job creation
+      setSelectedClientId(parsed.client_id || '');
+      setSelectedRacquetId(parsed.id || '');
     } catch (e) {
       setQrScanError('Failed to parse QR code');
     }
@@ -987,6 +984,14 @@ export default function NewJobScreen() {
 
   // Debug log for editableRacquet
   React.useEffect(() => { console.log('editableRacquet:', editableRacquet); }, [editableRacquet]);
+
+  // Clear scan state when leaving Scan QR segment
+  useEffect(() => {
+    if (segment !== 'scanQR') {
+      setScannedQrData(null);
+      setEditableRacquet(null);
+    }
+  }, [segment]);
 
   return (
     <View style={{ flex: 1 }}>
@@ -1150,29 +1155,18 @@ export default function NewJobScreen() {
                 <Text style={{ marginTop: 24, color: '#666', textAlign: 'center', maxWidth: 300 }}>
                   Align the racquet QR code within the viewfinder to scan and auto-fill racquet details.
                 </Text>
-                {/* After scan, show client selection/creation options */}
                 {scannedQrData && (
-                  <View style={{ marginTop: 32, width: '100%', alignItems: 'center' }}>
-                    <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 8 }}>Racquet Details Scanned!</Text>
-                    {/* You can show a summary or allow client selection/add here */}
-                    <Text style={{ color: '#333', marginBottom: 8 }}>Assign to an existing client or add a new client below.</Text>
-                    {/* Existing client dropdown */}
-                    <SearchableDropdown
-                      label="Client"
-                      items={clients.map(c => ({ id: c.id, label: c.full_name }))}
-                      value={selectedClientId}
-                      onChange={handleClientSelect}
-                      searchFields={['label']}
-                      placeholder="Select a client..."
-                    />
-                    <Text style={{ marginVertical: 8, color: '#888' }}>or</Text>
-                    {/* Add new client form */}
-                    <ClientForm
-                      onClientCreated={(clientId) => {
-                        setSelectedClientId(clientId);
-                      }}
-                    />
-                  </View>
+                  <ScrollView style={{ width: '100%' }} contentContainerStyle={{ paddingBottom: 100 }}>
+                    <View style={{ maxWidth: 600, alignSelf: 'center', width: '100%' }}>
+                      {/* Autofill client display */}
+                      <View style={{ marginBottom: 16 }}>
+                        <Text style={{ fontWeight: 'bold', fontSize: 16 }}>
+                          Client: {scannedQrData.clientName || scannedQrData.client_id || 'Unknown'}
+                        </Text>
+                      </View>
+                      {editableRacquet && renderRacquetDetails()}
+                    </View>
+                  </ScrollView>
                 )}
               </>
             )}

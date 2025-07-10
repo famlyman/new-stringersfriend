@@ -45,6 +45,7 @@ export const RacquetQRCode: React.FC<RacquetQRCodeProps> = ({
     notes: racquetData.notes ?? '',
     stringing_notes: racquetData.stringing_notes ?? '',
     client_id: racquetData.client_id,
+    clientName: racquetData.clientName ?? '',
   });
 
   const [qrSvg, setQrSvg] = useState<string>('');

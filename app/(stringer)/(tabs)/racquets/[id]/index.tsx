@@ -30,6 +30,8 @@ interface RacquetDetail {
   last_stringing_date: string | null;
   stringing_notes: string | null;
   qr_code_data: string | null;
+  client_id?: string | null;
+  client?: { full_name: string | null } | null;
 }
 
 export default function RacquetDetailScreen() {
@@ -70,6 +72,18 @@ export default function RacquetDetailScreen() {
         .eq('id', racquetId)
         .single();
 
+      console.log('racquet data from supabase:', data);
+      if (data?.client_id) {
+        const { data: client, error: clientError } = await supabase
+          .from('clients')
+          .select('full_name')
+          .eq('id', data.client_id)
+          .single();
+        console.log('client fetched directly:', client, 'error:', clientError);
+      } else {
+        console.log('No client_id found on racquet');
+      }
+
       if (error) {
         throw error;
       }
@@ -94,6 +108,8 @@ export default function RacquetDetailScreen() {
           last_stringing_date: data.last_stringing_date || null,
           stringing_notes: data.stringing_notes || null,
           qr_code_data: data.qr_code_data || null,
+          client_id: data.client_id || null,
+          client: data.client || null,
         };
         setRacquet(transformedRacquet);
       }
@@ -157,9 +173,11 @@ export default function RacquetDetailScreen() {
       string_date: racquet.last_stringing_date,
       notes: racquet.notes,
       stringing_notes: racquet.stringing_notes,
-      client_id: racquet.user_id || '',
+      client_id: racquet.client_id || '',
+      clientName: racquet.client?.full_name || '',
       stringing_details: stringingDetails,
     };
+    console.log('QR payload before encoding:', qrPayload);
     setQrData(JSON.stringify(qrPayload));
   };
 
