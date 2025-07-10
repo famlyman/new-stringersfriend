@@ -327,6 +327,45 @@ export default function EditInventoryScreen() {
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
+      {/* Delete Button fixed at the bottom */}
+      <View style={[styles.deleteButtonContainer, { bottom: insets.bottom + 90 }]}> 
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => {
+            Alert.alert(
+              'Delete String',
+              'Are you sure you want to delete this string from your inventory? This action cannot be undone.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      setSubmitting(true);
+                      const { error } = await supabase
+                        .from('string_inventory')
+                        .delete()
+                        .eq('id', id);
+                      if (error) throw error;
+                      Alert.alert('Deleted', 'Inventory item deleted successfully!');
+                      router.replace('/(stringer)/(tabs)/inventory');
+                    } catch (error) {
+                      console.error('Error deleting inventory item:', error);
+                      Alert.alert('Error', 'Failed to delete inventory item');
+                    } finally {
+                      setSubmitting(false);
+                    }
+                  },
+                },
+              ]
+            );
+          }}
+          disabled={submitting}
+        >
+          <Text style={styles.deleteButtonText}>{submitting ? 'Deleting...' : 'Delete String'}</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -385,5 +424,25 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderTopWidth: 1,
     borderTopColor: '#eee'
+  },
+  // Add styles for delete button
+  deleteButtonContainer: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    // bottom is set dynamically with insets
+    zIndex: 10,
+    // backgroundColor: 'transparent',
+  },
+  deleteButton: {
+    backgroundColor: '#e74c3c',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  deleteButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 }); 

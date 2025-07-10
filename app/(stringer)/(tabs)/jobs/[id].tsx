@@ -465,7 +465,7 @@ export default function JobDetailScreen() {
           </ScrollView>
           
           {nextStatus && (
-            <View style={[styles.footer, { bottom: insets.bottom }]}>
+            <View style={[styles.footer, { bottom: 0 }]}>
               <TouchableOpacity 
                 style={[
                   styles.actionButton,
@@ -717,7 +717,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderRadius: 12,
-    marginBottom: 47,
   },
   actionIcon: {
     marginRight: 8,

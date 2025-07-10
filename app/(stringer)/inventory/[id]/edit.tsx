@@ -23,7 +23,7 @@ type FormData = {
 export default function EditInventoryScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Force false for debug
   const [submitting, setSubmitting] = useState(false);
   const [brands, setBrands] = useState<Array<{ id: string; label: string }>>([]);
   const [models, setModels] = useState<Array<{ id: string; label: string }>>([]);
@@ -196,6 +196,33 @@ export default function EditInventoryScreen() {
     }
   };
 
+  const handleDelete = async () => {
+    Alert.alert(
+      'Delete Inventory Item',
+      'Are you sure you want to delete this inventory item? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { error } = await supabase
+                .from('string_inventory')
+                .delete()
+                .eq('id', id);
+              if (error) throw error;
+              router.replace('/(stringer)/(tabs)/inventory');
+            } catch (error) {
+              console.error('Error deleting inventory:', error);
+              Alert.alert('Error', 'Failed to delete inventory item');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -205,31 +232,33 @@ export default function EditInventoryScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top','left','right']}>
+    <View style={styles.container}>
       <StatusBar 
         barStyle="light-content" 
         backgroundColor={UI_KIT.colors.navy}
         translucent={false}
       />
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={UI_KIT.colors.gray} />
-        </TouchableOpacity>
-        <UI_KIT_Text variant="h2" style={styles.headerTitle}>Edit String</UI_KIT_Text>
-        <View style={{ width: 36, marginLeft: 8 }} />
-      </View>
-      <View style={{ backgroundColor: 'red', padding: 16, alignItems: 'center' }}>
-        <UI_KIT_Text variant="h2" style={{ color: 'white' }}>DEBUG: THIS IS THE CORRECT EDIT FILE</UI_KIT_Text>
-      </View>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={90}
-      >
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={UI_KIT.colors.gray} />
+          </TouchableOpacity>
+          <UI_KIT_Text variant="h2" style={styles.headerTitle}>Edit String</UI_KIT_Text>
+          <View style={{ width: 36, marginLeft: 8 }} />
+        </View>
+      </SafeAreaView>
+      
+      <View style={styles.contentContainer}>
+        <KeyboardAvoidingView
+          style={styles.keyboardAvoidingView}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+        >
         <ScrollView 
           style={styles.scrollView}
           contentContainerStyle={styles.scrollViewContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           <View style={styles.section}>
             <UI_KIT_Text variant="h2" style={styles.sectionTitle}>String Details</UI_KIT_Text>
@@ -337,10 +366,23 @@ export default function EditInventoryScreen() {
               {submitting ? 'Updating...' : 'Update String'}
             </UI_KIT_Text>
           </TouchableOpacity>
-          <View style={{ height: 32 }} />
+          <View style={{ height: 24 }} />
         </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        </KeyboardAvoidingView>
+      </View>
+
+      {/* Fixed Delete Button at Bottom */}
+      <View style={styles.deleteButtonContainer}>
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={handleDelete}
+        >
+          <UI_KIT_Text style={styles.deleteButtonText}>
+            Delete Inventory Item
+          </UI_KIT_Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 };
 
@@ -348,7 +390,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
-    paddingTop: 0,
+  },
+  safeArea: {
+    backgroundColor: UI_KIT.colors.navy,
+  },
+  contentContainer: {
+    flex: 1,
+  },
+  keyboardAvoidingView: {
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,
@@ -361,7 +411,27 @@ const styles = StyleSheet.create({
   },
   scrollViewContent: {
     padding: 16,
-    paddingBottom: 32,
+    paddingBottom: 24,
+    flexGrow: 1,
+  },
+  deleteButtonContainer: {
+    padding: 16,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    paddingBottom: 24,
+  },
+  deleteButton: {
+    backgroundColor: '#e53935',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    width: '100%',
+  },
+  deleteButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
   section: {
     backgroundColor: '#fff',

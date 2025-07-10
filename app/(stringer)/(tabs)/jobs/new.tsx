@@ -11,6 +11,7 @@ import { Text as UIText } from '../../../../src/components/ui/Text';
 import { Button } from '../../../../src/components/ui/Button';
 import { UI_KIT } from '../../../../src/styles/uiKit';
 import CustomHeader from '../../../../src/components/CustomHeader';
+import CustomAlert from '../../../components/CustomAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ClientForm from '../../../../src/components/ClientForm';
 import RacquetForm from '../../../../src/components/RacquetForm';
@@ -193,15 +194,22 @@ export default function NewJobScreen() {
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertTitle, setAlertTitle] = useState('');
   const [alertMessage, setAlertMessage] = useState('');
+  const alertOnCloseRef = useRef<(() => void) | null>(null);
 
-  const showAlert = (title: string, message: string) => {
+  // showAlert now accepts an optional onClose callback
+  const showAlert = (title: string, message: string, onClose?: () => void) => {
     setAlertTitle(title);
     setAlertMessage(message);
     setAlertVisible(true);
+    alertOnCloseRef.current = onClose || null;
   };
 
   const hideAlert = () => {
     setAlertVisible(false);
+    if (alertOnCloseRef.current) {
+      alertOnCloseRef.current();
+      alertOnCloseRef.current = null;
+    }
   };
 
   // Load clients and string models on mount
@@ -613,7 +621,8 @@ export default function NewJobScreen() {
     }
   };
 
-  const renderRacquetDetails = () => {
+  // Update renderRacquetDetails to accept an optional onJobCreated callback
+  const renderRacquetDetails = (onJobCreated?: () => void) => {
     if (!editableRacquet) return null;
 
     const selectedClient = clients.find(client => client.id === selectedClientId);
@@ -906,7 +915,11 @@ export default function NewJobScreen() {
                   cross_string_model_id: null,
                 }]);
               if (stringingError) throw stringingError;
-              showAlert('Success', 'Job created successfully!');
+              if (onJobCreated) {
+                onJobCreated();
+              } else {
+                showAlert('Success', 'Job created successfully!');
+              }
               // Optionally, navigate away or reset state
             } catch (error) {
               showAlert('Error', (error as Error).message || 'Failed to create job.');
@@ -1164,7 +1177,11 @@ export default function NewJobScreen() {
                           Client: {scannedQrData.clientName || scannedQrData.client_id || 'Unknown'}
                         </Text>
                       </View>
-                      {editableRacquet && renderRacquetDetails()}
+                      {editableRacquet && renderRacquetDetails(() => {
+                        showAlert('Success', 'Job created successfully!', () => {
+                          router.replace('/(stringer)/(tabs)/jobs');
+                        });
+                      })}
                     </View>
                   </ScrollView>
                 )}
@@ -1173,6 +1190,13 @@ export default function NewJobScreen() {
           </View>
         )}
       </View>
+      {/* Alert Modal */}
+      <CustomAlert
+        visible={alertVisible}
+        title={alertTitle}
+        message={alertMessage}
+        onClose={hideAlert}
+      />
     </View>
   );
 }

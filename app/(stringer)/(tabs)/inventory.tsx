@@ -154,7 +154,7 @@ export default function InventoryScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['top','left','right']}>
         <View style={styles.header}>
-          <Text variant="h2" style={styles.headerTitle}>String Inventory</Text>
+          <Text variant="h2" style={styles.headerTitle}>Inventory</Text>
           <View style={styles.addButtonPlaceholder} />
         </View>
         <View style={styles.loadingContainer}>
@@ -168,7 +168,7 @@ export default function InventoryScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['top','left','right']}>
         <View style={styles.header}>
-          <Text variant="h2" style={styles.headerTitle}>String Inventory</Text>
+          <Text variant="h2" style={styles.headerTitle}>Inventory</Text>
           <View style={styles.addButtonPlaceholder} />
         </View>
         <View style={styles.errorContainer}>
@@ -189,7 +189,7 @@ export default function InventoryScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top','left','right']}>
       <View style={styles.header}>
-        <Text variant="h2" style={styles.headerTitle}>String Inventory</Text>
+        <Text variant="h2" style={styles.headerTitle}>Inventory</Text>
         <Link href="/(stringer)/inventory/new" asChild>
           <TouchableOpacity style={styles.addButton}>
             <Ionicons name="add" size={24} color={UI_KIT.colors.white} />
