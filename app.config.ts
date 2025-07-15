@@ -1,10 +1,12 @@
 // Expo app config converted from app.json to app.config.ts
 import { ExpoConfig, ConfigContext } from '@expo/config';
 
+const IS_DEV = process.env.APP_VARIANT === 'development';
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: 'StringersFriend',
-  slug: 'stringers-friend',
+  name: IS_DEV ? 'StringersFriend (Dev)' : 'StringersFriend',
+  slug: IS_DEV ? 'stringers-friend-dev' : 'stringers-friend',
   version: '1.0.0',
   orientation: 'portrait',
   scheme: 'stringersfriend',
@@ -18,14 +20,18 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   assetBundlePatterns: ['**/*'],
   ios: {
+    ...config.ios,
     supportsTablet: true,
+    bundleIdentifier: IS_DEV ? 'com.famlyman.stringersfriend.dev' : 'com.famlyman.stringersfriend',
   },
   android: {
+    ...config.android,
     adaptiveIcon: {
       foregroundImage: require('./assets/images/adaptive-icon.png'),
       backgroundColor: '#ffffff',
     },
     softwareKeyboardLayoutMode: 'pan',
+    package: IS_DEV ? 'com.famlyman.stringersfriend.dev' : 'com.famlyman.stringersfriend',
   },
   web: {
     favicon: require('./assets/images/favicon.png'),
